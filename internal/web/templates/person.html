@@ -62,8 +62,7 @@
   <div class="card"><div class="stat">{{pct .Metrics.PctAboveLead}}</div>of stretch tasks assigned by you</div>
   <div class="card"><div class="stat">{{pct .Metrics.PctInvestigated}}</div>of tasks with an investigation</div>
 </div>
-{{range .Standings}}<p>{{.Release.Name}}:
-  {{if .Compliant}}<span class="badge ok">Has a stretch task</span>{{else}}<span class="badge bad">No stretch task yet</span>{{end}}</p>{{end}}
+{{range .Standings}}<p>{{.Release.Name}}: {{template "complianceBadge" .Compliant}}</p>{{end}}
 <table>
   <tr><th>Task</th><th>Release</th><th>Stretch</th><th>Picked by</th><th>Status</th><th></th></tr>
   {{range .Work}}<tr>

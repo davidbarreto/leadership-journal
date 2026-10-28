@@ -1,0 +1,70 @@
+{{define "title"}}Report: {{.Data.Person.Name}}{{end}}
+{{define "content"}}{{with .Data}}
+<form method="get" action="/people/{{.Person.ID}}/report" class="card noprint">
+  <input type="hidden" name="submitted" value="1">
+  <h3>What to include</h3>
+  <p class="muted">Only finalized records can appear, never drafts. Choose what you are comfortable sharing.</p>
+  <div class="row">
+    <label>From <input type="date" name="from" value="{{.FromInput}}"></label>
+    <label>To <input type="date" name="to" value="{{.ToInput}}"></label>
+  </div>
+  <p>
+    <label class="check"><input type="checkbox" name="sections" value="progress"{{if .Sections.Progress}} checked{{end}}> Improvement journal</label>
+    <label class="check"><input type="checkbox" name="sections" value="entries"{{if .Sections.Entries}} checked{{end}}> Notes</label>
+    <label class="check"><input type="checkbox" name="sections" value="commitments"{{if .Sections.Commitments}} checked{{end}}> Commitments</label>
+    <label class="check"><input type="checkbox" name="sections" value="work"{{if .Sections.Work}} checked{{end}}> Work</label>
+  </p>
+  <p>Kinds of notes:
+    {{range .KindOptions}}<label class="check"><input type="checkbox" name="kind" value="{{.Code}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>{{end}}
+  </p>
+  <button>Update report</button>
+  <a class="button secondary" href="{{.MarkdownLink}}">Download Markdown</a>
+  <button type="button" class="secondary" disabled>Print this page to save it as a PDF</button>
+</form>
+
+<article>
+<h1>Report: {{.Person.Name}}</h1>
+<p class="muted">{{.Person.RoleTitle}}{{if .TeamName}} · {{.TeamName}}{{end}}{{if .Level}} · Level {{.Level}}{{end}}</p>
+<p class="muted">Prepared on {{date .Generated}}{{if .HasPeriod}}. Period: {{if .FromInput}}from {{.FromInput}}{{end}} {{if .ToInput}}to {{.ToInput}}{{end}}{{end}}. This report contains only finalized records.</p>
+
+{{if .Sections.Progress}}
+<h2>Improvement journal</h2>
+{{if .NoProgressStreak}}<p><span class="badge bad">{{.NoProgressStreak}} progress check(s) in a row without progress</span></p>{{end}}
+{{range .Checks}}
+<div class="card"><div class="meta">{{date .OccurredAt}} · <span class="badge {{if eq .Outcome "progress"}}ok{{else if eq .Outcome "no_progress"}}bad{{else}}warn{{end}}">{{human (print .Outcome)}}</span></div>
+<div class="prose">{{md .Body}}</div></div>
+{{else}}<p class="muted">No progress checks in this period.</p>{{end}}
+{{end}}
+
+{{if .Sections.Entries}}
+<h2>Notes</h2>
+{{range .Entries}}
+<div class="card"><div class="meta"><span class="badge">{{.KindLabel}}</span> {{date .Entry.OccurredAt}} <span class="tags">{{range .Entry.Tags}}<span class="badge">{{.}}</span>{{end}}</span></div>
+<div class="prose">{{md .Entry.Body}}</div></div>
+{{else}}<p class="muted">No notes in this period.</p>{{end}}
+{{end}}
+
+{{if .Sections.Commitments}}
+<h2>Commitments</h2>
+{{if .Commitments}}
+<table>
+  <tr><th>What</th><th>Status</th><th>Due</th></tr>
+  {{range .Commitments}}<tr><td>{{.Content}}{{if .Deliverable}}<br><span class="muted">Deliverable: {{.Deliverable}}</span>{{end}}</td><td>{{human (print .Status)}}{{if .StatusNote}}: {{.StatusNote}}{{end}}</td><td>{{datePtr .DueOn}}</td></tr>{{end}}
+</table>
+{{else}}<p class="muted">No commitments in this period.</p>{{end}}
+{{end}}
+
+{{if .Sections.Work}}
+<h2>Work</h2>
+{{if .Work}}
+<p>Stretch tasks counted: {{.Metrics.Above}} · picked by them: {{pct .Metrics.PctAboveSelf}} · assigned by their lead: {{pct .Metrics.PctAboveLead}} · tasks with an investigation first: {{pct .Metrics.PctInvestigated}}</p>
+{{range .Standings}}<p>{{.Release.Name}}: {{template "complianceBadge" .Compliant}}</p>{{end}}
+<table>
+  <tr><th>Task</th><th>Release</th><th>Stretch</th><th>Picked by</th><th>Status</th></tr>
+  {{range .Work}}<tr><td>{{.Item.Title}}<br><span class="muted">{{.Item.StretchRationale}}</span></td><td>{{.ReleaseName}}</td>
+    <td>{{human (print .Item.Stretch)}}</td><td>{{human (print .Item.PickedBy)}}</td><td>{{human (print .Item.Status)}}</td></tr>{{end}}
+</table>
+{{else}}<p class="muted">No tasks in this period.</p>{{end}}
+{{end}}
+</article>
+{{end}}{{end}}

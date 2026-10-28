@@ -72,7 +72,10 @@ func TestStaticFilesNeedNoLogin(t *testing.T) {
 }
 
 // protectedPaths lists the pages that must redirect to the login page.
-var protectedPaths = []string{"/", "/people"}
+var protectedPaths = []string{
+	"/", "/people", "/people/new", "/people/1", "/people/1/edit", "/people/1/report",
+	"/meetings", "/meetings/1", "/work", "/work/1", "/entries/1/edit", "/search", "/settings",
+}
 
 func TestEverythingElseRequiresLogin(t *testing.T) {
 	env := newEnv(t)

@@ -191,6 +191,7 @@ type releaseStanding struct {
 type workRow struct {
 	Item        domain.WorkItem
 	ReleaseName string
+	PersonName  string
 }
 
 type personPage struct {

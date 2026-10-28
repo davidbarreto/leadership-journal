@@ -12,12 +12,13 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	texttemplate "text/template"
 	"time"
 
 	"leadership-journal/internal/store"
 )
 
-//go:embed templates/*.html static/*
+//go:embed templates/* static/*
 var assets embed.FS
 
 const (
@@ -40,15 +41,16 @@ type Options struct {
 
 // Server is the HTTP application.
 type Server struct {
-	store   *store.Store
-	log     *slog.Logger
-	loc     *time.Location
-	now     func() time.Time
-	ttl     time.Duration
-	hosts   map[string]bool
-	limiter *loginLimiter
-	pages   map[string]*template.Template
-	handler http.Handler
+	store    *store.Store
+	log      *slog.Logger
+	loc      *time.Location
+	now      func() time.Time
+	ttl      time.Duration
+	hosts    map[string]bool
+	limiter  *loginLimiter
+	pages    map[string]*template.Template
+	reportMD *texttemplate.Template
+	handler  http.Handler
 }
 
 // New builds a Server.
@@ -77,9 +79,13 @@ func New(o Options) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	reportMD, err := loadReportTemplate()
+	if err != nil {
+		return nil, err
+	}
 	s := &Server{
 		store: o.Store, log: o.Logger, loc: o.Location, now: o.Now, ttl: o.SessionTTL,
-		hosts: hosts, pages: pages,
+		hosts: hosts, pages: pages, reportMD: reportMD,
 		limiter: newLoginLimiter(maxLoginFailures, loginWindow, o.Now),
 	}
 	s.handler = s.middleware(s.routes())

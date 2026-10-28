@@ -1,0 +1,69 @@
+{{define "title"}}Work{{end}}
+{{define "content"}}{{with .Data}}
+<h1>Work</h1>
+{{if not .Releases}}<p class="muted">No releases yet. Add one to start tracking tasks.</p>{{end}}
+
+<details{{if not .Releases}} open{{end}} class="noprint"><summary>Add a release</summary>
+  <form method="post" action="/releases" class="card">
+    {{template "csrf" $}}<input type="hidden" name="back" value="/work">
+    <div class="row">
+      <label>Name <input type="text" name="name" required></label>
+      <label>Starts <input type="date" name="starts_on" required></label>
+      <label>Ends <input type="date" name="ends_on" required></label>
+    </div>
+    <button>Add release</button>
+  </form>
+</details>
+
+{{if .Releases}}<p>Releases: {{range .Releases}}<a href="/work?release={{.ID}}">{{.Name}}</a> · {{end}}</p>{{end}}
+
+{{with .Selected}}
+<h2>{{.Name}} <span class="muted">{{date .StartsOn}} – {{date .EndsOn}}</span></h2>
+<p class="muted">The process: everyone takes at least one task above their level in every release. Only finalized tasks count.</p>
+<table>
+  <tr><th>Person</th><th>Standing</th><th>Tasks</th></tr>
+  {{range $.Data.Compliance}}<tr>
+    <td><a href="/people/{{.Person.ID}}">{{.Person.Name}}</a></td>
+    <td>{{template "complianceBadge" .Compliant}}</td>
+    <td>{{len .Items}}</td>
+  </tr>{{end}}
+</table>
+{{end}}
+
+{{if .Rows}}
+<h3>Tasks</h3>
+<table>
+  <tr><th>Task</th><th>Person</th><th>Stretch</th><th>Picked by</th><th>Status</th><th></th></tr>
+  {{range .Rows}}<tr>
+    <td><a href="/work/{{.Item.ID}}">{{.Item.Title}}</a></td><td>{{.PersonName}}</td>
+    <td>{{human (print .Item.Stretch)}}</td><td>{{human (print .Item.PickedBy)}}</td><td>{{human (print .Item.Status)}}</td>
+    <td>{{template "lifecycleBadge" .Item}}</td>
+  </tr>{{end}}
+</table>
+{{end}}
+
+{{if .Releases}}
+<h3>Add a task</h3>
+{{if .People}}
+<form method="post" action="/work" class="card noprint">
+  {{template "csrf" $}}<input type="hidden" name="back" value="/work">
+  <div class="row">
+    <label>Release <select name="release_id">{{range .Releases}}<option value="{{.ID}}"{{if $.Data.Selected}}{{if eq .ID $.Data.Selected.ID}} selected{{end}}{{end}}>{{.Name}}</option>{{end}}</select></label>
+    <label>Person <select name="person_id">{{range .People}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label>
+    <label>Assigned <input type="date" name="assigned_at" value="{{.Today}}"></label>
+  </div>
+  <div class="row">
+    <label>Task <input type="text" name="title" required></label>
+    <label>Ticket (optional) <input type="text" name="external_ref"></label>
+  </div>
+  <div class="row">
+    <label>Picked by <select name="picked_by"><option value="lead">You (assigned)</option><option value="self">The person (they took it)</option></select></label>
+    <label>Stretch for this person <select name="stretch"><option value="above">Above their level</option><option value="at">At their level</option><option value="below">Below their level</option></select></label>
+  </div>
+  <label>Why? (required: new area for them, or they did it before…) <input type="text" name="rationale" required></label>
+  <button>Add as draft</button>
+  <p class="muted">The judgment is about this person and this task, and is locked when you finalize.</p>
+</form>
+{{else}}<p class="muted">Add a person who reports to you first.</p>{{end}}
+{{end}}
+{{end}}{{end}}

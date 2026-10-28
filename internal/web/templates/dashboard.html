@@ -1,5 +1,53 @@
 {{define "title"}}Dashboard{{end}}
-{{define "content"}}
+{{define "content"}}{{with .Data}}
 <h1>Dashboard</h1>
-<p class="muted">Drafts waiting to be finalized: {{.Data.Drafts}}</p>
+{{if .NoPeople}}
+<p>Welcome. <a href="/people/new">Add your first person</a> to start keeping notes, then plan a 1:1 from <a href="/meetings">Meetings</a>.</p>
 {{end}}
+
+{{if .AnyDrafts}}
+<section class="card draft">
+  <h3>Drafts waiting to be finalized</h3>
+  <p>Meetings: {{.Drafts.Meetings}} · Entries: {{.Drafts.Entries}} · Commitments: {{.Drafts.Commitments}} · Tasks: {{.Drafts.WorkItems}}</p>
+  <p class="muted">Drafts are not part of the record, reports or metrics until you finalize them.</p>
+</section>
+{{end}}
+
+{{if .Progress}}
+<h2>Improvement journal</h2>
+<p class="muted">A progress check is due every two weeks for each person.</p>
+<table>
+  <tr><th>Person</th><th>Last check</th><th>Status</th></tr>
+  {{range .Progress}}<tr>
+    <td><a href="/people/{{.Person.ID}}">{{.Person.Name}}</a></td>
+    <td>{{if .LastCheck}}{{datePtr .LastCheck}}{{else}}No check yet{{end}}</td>
+    <td>
+      {{if .Overdue}}<span class="badge warn">Overdue</span>{{else}}<span class="badge ok">On time</span>{{end}}
+      {{if ge .NoProgressStreak 2}}<span class="badge bad">NO PROGRESS ×{{.NoProgressStreak}}</span>{{end}}
+    </td>
+  </tr>{{end}}
+</table>
+{{end}}
+
+{{if .Commitments}}
+<h2>Open commitments</h2>
+<table>
+  <tr><th>Who</th><th>What</th><th>Due</th><th></th></tr>
+  {{range .Commitments}}<tr>
+    <td>{{.PersonName}}</td>
+    <td>{{.C.Content}}{{if .C.Deliverable}}<br><span class="muted">Deliverable: {{.C.Deliverable}}</span>{{end}}</td>
+    <td>{{datePtr .C.DueOn}}</td>
+    <td>{{if .Overdue}}<span class="badge bad">Overdue</span>{{end}}</td>
+  </tr>{{end}}
+</table>
+{{end}}
+
+{{with .Release}}
+<h2>{{.Name}}: stretch tasks</h2>
+<p class="muted">Everyone takes at least one task above their level in every release.</p>
+<table>
+  <tr><th>Person</th><th>Standing</th></tr>
+  {{range $.Data.Compliance}}<tr><td><a href="/people/{{.Person.ID}}">{{.Person.Name}}</a></td><td>{{template "complianceBadge" .Compliant}}</td></tr>{{end}}
+</table>
+{{end}}
+{{end}}{{end}}

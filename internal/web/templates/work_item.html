@@ -1,0 +1,102 @@
+{{define "title"}}{{.Data.Item.Title}}{{end}}
+{{define "content"}}{{with .Data}}
+<h1>{{.Item.Title}}</h1>
+<p class="muted">
+  <a href="/people/{{.Item.PersonID}}">{{.PersonName}}</a> · <a href="/work?release={{.Item.ReleaseID}}">{{.ReleaseName}}</a>{{if .Item.ExternalRef}} · {{.Item.ExternalRef}}{{end}}
+  <span class="badge {{if eq .Item.Status "done"}}ok{{else if eq .Item.Status "in_progress"}}warn{{else if or (eq .Item.Status "dropped") (eq .Item.Status "moved")}}bad{{end}}">{{human (print .Item.Status)}}</span>
+  {{template "lifecycleBadge" .Item}}
+</p>
+{{if .Item.IsVoided}}<p class="flash error">Voided: {{.Item.VoidReason}}</p>{{end}}
+{{with .MovedFrom}}<p>Moved from <a href="/work/{{.ID}}">the original task</a>, which was reassigned.</p>{{end}}
+{{with .MovedTo}}<p>Moved to <a href="/work/{{.ID}}">the new task</a>.</p>{{end}}
+
+<h2>Stretch judgment</h2>
+{{if .Editable}}
+<form method="post" action="/work/{{.Item.ID}}" class="card">
+  {{template "csrf" $}}<input type="hidden" name="back" value="{{.Back}}">
+  <div class="row">
+    <label>Release <select name="release_id">{{range .Releases}}<option value="{{.ID}}"{{if eq .ID $.Data.Item.ReleaseID}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+    <label>Person <select name="person_id">{{range .People}}<option value="{{.ID}}"{{if eq .ID $.Data.Item.PersonID}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+    <label>Assigned <input type="date" name="assigned_at" value="{{.AssignedAt}}"></label>
+  </div>
+  <div class="row">
+    <label>Task <input type="text" name="title" value="{{.Item.Title}}" required></label>
+    <label>Ticket <input type="text" name="external_ref" value="{{.Item.ExternalRef}}"></label>
+  </div>
+  <div class="row">
+    <label>Picked by
+      <select name="picked_by">
+        <option value="lead"{{if eq .Item.PickedBy "lead"}} selected{{end}}>You (assigned)</option>
+        <option value="self"{{if eq .Item.PickedBy "self"}} selected{{end}}>The person (they took it)</option>
+      </select></label>
+    <label>Stretch for this person
+      <select name="stretch">
+        <option value="above"{{if eq .Item.Stretch "above"}} selected{{end}}>Above their level</option>
+        <option value="at"{{if eq .Item.Stretch "at"}} selected{{end}}>At their level</option>
+        <option value="below"{{if eq .Item.Stretch "below"}} selected{{end}}>Below their level</option>
+      </select></label>
+  </div>
+  <label>Why <input type="text" name="rationale" value="{{.Item.StretchRationale}}" required></label>
+  <button>Save draft</button>
+</form>
+<form method="post" action="/work/{{.Item.ID}}/finalize" class="inline">{{template "csrf" $}}<button>Finalize task</button></form>
+<form method="post" action="/work/{{.Item.ID}}/delete" class="inline">{{template "csrf" $}}<input type="hidden" name="back" value="{{.Back}}"><button class="danger">Delete this draft</button></form>
+<p class="muted">Finalizing locks the judgment below: who, which release, who picked it, how much of a stretch it is and why.</p>
+{{else}}
+<div class="card">
+  <p><strong>{{human (print .Item.Stretch)}}</strong> level for {{.PersonName}}, picked by {{if eq .Item.PickedBy "self"}}the person{{else}}you{{end}}. Assigned {{date .Item.AssignedAt}}.</p>
+  <p>{{.Item.StretchRationale}}</p>
+  <p class="muted">The stretch judgment is locked once finalized.</p>
+</div>
+{{end}}
+
+{{if .Tracking}}
+<h2>Progress</h2>
+<form method="post" action="/work/{{.Item.ID}}/tracking" class="card">
+  {{template "csrf" $}}
+  <div class="row">
+    <label>Status
+      <select name="status">
+        <option value="planned"{{if eq .Item.Status "planned"}} selected{{end}}>Planned</option>
+        <option value="in_progress"{{if eq .Item.Status "in_progress"}} selected{{end}}>In progress</option>
+        <option value="done"{{if eq .Item.Status "done"}} selected{{end}}>Done</option>
+        <option value="dropped"{{if eq .Item.Status "dropped"}} selected{{end}}>Dropped</option>
+      </select></label>
+    <label>Completed on <input type="date" name="completed_at" value="{{.CompletedAt}}"></label>
+  </div>
+  <label class="check"><input type="checkbox" name="investigation_done" value="1"{{if .Item.InvestigationDone}} checked{{end}}> Investigated (code and Confluence) before starting</label>
+  <label>Investigation page (optional) <input type="text" name="investigation_url" value="{{.Item.InvestigationURL}}"></label>
+  <label>How it went, how independently they worked <textarea name="outcome_notes" rows="4">{{.Item.OutcomeNotes}}</textarea></label>
+  <button>Save progress</button>
+</form>
+{{end}}
+{{if .Item.CompletedAt}}<p>Completed: {{datePtr .Item.CompletedAt}}</p>{{end}}
+{{if .Item.InvestigationDone}}<p>Investigated before starting.</p>{{end}}
+
+{{if .Movable}}
+<details class="noprint"><summary>Reassign this task to someone else</summary>
+  <form method="post" action="/work/{{.Item.ID}}/move" class="card">
+    {{template "csrf" $}}<input type="hidden" name="back" value="{{.Back}}">
+    <p class="muted">The original stays on record, marked as moved. The new person gets their own stretch judgment.</p>
+    <div class="row">
+      <label>New person <select name="person_id">{{range .People}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label>
+      <label>Assigned <input type="date" name="assigned_at" value="{{.Today}}"></label>
+    </div>
+    <div class="row">
+      <label>Picked by <select name="picked_by"><option value="lead">You (assigned)</option><option value="self">The person (they took it)</option></select></label>
+      <label>Stretch for them <select name="stretch"><option value="above">Above their level</option><option value="at">At their level</option><option value="below">Below their level</option></select></label>
+    </div>
+    <label>Why <input type="text" name="rationale" required></label>
+    <button>Reassign</button>
+  </form>
+</details>
+{{end}}
+
+{{if and .Item.IsFinalized (not .Item.IsVoided)}}
+<details class="noprint"><summary>Void this task</summary>
+  <form method="post" action="/work/{{.Item.ID}}/void">{{template "csrf" $}}<input type="hidden" name="back" value="{{.Back}}">
+    <input type="text" name="reason" placeholder="Why is it wrong? (kept on record)" required>
+    <button class="danger">Void</button></form>
+</details>
+{{end}}
+{{end}}{{end}}

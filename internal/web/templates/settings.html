@@ -1,0 +1,53 @@
+{{define "title"}}Settings{{end}}
+{{define "content"}}{{with .Data}}
+<h1>Settings</h1>
+<p class="muted">Everything here can be extended without changing the program. Codes never change, so renaming a label never breaks past records.</p>
+
+<h2>Teams</h2>
+<p>{{range .Teams}}<span class="badge">{{.Name}}</span>{{else}}<span class="muted">No teams yet.</span>{{end}}</p>
+<form method="post" action="/settings/teams" class="card">{{template "csrf" $}}<input type="hidden" name="back" value="/settings">
+  <div class="row"><input type="text" name="name" placeholder="Team name" required><span><button>Add team</button></span></div></form>
+
+<h2>Levels</h2>
+<table>
+  <tr><th>Track</th><th>Code</th><th>Title</th><th>Rank</th></tr>
+  {{range .Levels}}<tr><td>{{.Track}}</td><td>{{.Code}}</td><td>{{.Title}}</td><td>{{.Rank}}</td></tr>{{end}}
+</table>
+<form method="post" action="/settings/levels" class="card">{{template "csrf" $}}<input type="hidden" name="back" value="/settings">
+  <div class="row">
+    <label>Track <select name="track"><option value="engineer">Engineer</option><option value="manager">Manager</option><option value="qa">QA</option></select></label>
+    <label>Code <input type="text" name="code" placeholder="QA1" required></label>
+    <label>Title <input type="text" name="title" placeholder="Junior QA"></label>
+    <label>Rank <input type="number" name="rank" value="10" min="1"></label>
+  </div>
+  <p class="muted">Ranks only order levels inside a track. Leave gaps (10, 20, 30) so you can add one in between later.</p>
+  <button>Add level</button></form>
+
+<h2>Meeting kinds</h2>
+{{range .MeetingKinds}}
+<div class="card">
+  <strong>{{.Kind.Label}}</strong> {{if .Kind.RequiresPerson}}<span class="badge">about one person</span>{{end}}
+  <ol>{{range .Prompts}}<li>{{.Text}}</li>{{else}}<li class="muted">No questions yet.</li>{{end}}</ol>
+</div>
+{{end}}
+<form method="post" action="/settings/meeting-kinds" class="card">{{template "csrf" $}}<input type="hidden" name="back" value="/settings">
+  <div class="row"><input type="text" name="label" placeholder="e.g. Skip-level" required>
+    <label class="check"><input type="checkbox" name="requires_person" value="1"> About one person</label>
+    <span><button>Add meeting kind</button></span></div></form>
+<form method="post" action="/settings/prompts" class="card">{{template "csrf" $}}<input type="hidden" name="back" value="/settings">
+  <div class="row">
+    <select name="meeting_kind">{{range .MeetingKinds}}<option value="{{.Kind.Code}}">{{.Kind.Label}}</option>{{end}}</select>
+    <input type="text" name="text" placeholder="A question for the minutes" required>
+    <span><button>Add question</button></span>
+  </div></form>
+
+<h2>Entry kinds</h2>
+<p>{{range .EntryKinds}}<span class="badge">{{.Label}}</span>{{end}}</p>
+<form method="post" action="/settings/entry-kinds" class="card">{{template "csrf" $}}<input type="hidden" name="back" value="/settings">
+  <div class="row"><input type="text" name="label" placeholder="e.g. Kudos" required>
+    <label class="check"><input type="checkbox" name="requires_outcome" value="1"> Is a progress check (needs an outcome)</label>
+    <span><button>Add entry kind</button></span></div></form>
+
+<h2>Tags</h2>
+<p>{{range .Tags}}<span class="badge">{{.}}</span>{{else}}<span class="muted">None yet.</span>{{end}} <span class="muted">New tags are created when you use them on a note.</span></p>
+{{end}}{{end}}

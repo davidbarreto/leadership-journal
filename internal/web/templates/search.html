@@ -1,0 +1,16 @@
+{{define "title"}}Search{{end}}
+{{define "content"}}{{with .Data}}
+<h1>Search</h1>
+<form method="get" action="/search" class="noprint">
+  <div class="row"><input type="search" name="q" value="{{.Query}}" placeholder="Search notes, meetings and answers" autofocus><span><button>Search</button></span></div>
+</form>
+{{if .Searched}}
+  {{range .Hits}}
+  <article class="card{{if .Draft}} draft{{end}}">
+    <div class="meta"><span class="badge">{{.Label}}</span> {{.Title}}{{if .PersonName}} · {{.PersonName}}{{end}} · {{date .At}} {{if .Draft}}<span class="badge">Draft</span>{{end}}</div>
+    <p>{{highlight .Snippet}}</p>
+    {{if .Link}}<a href="{{.Link}}">Open</a>{{end}}
+  </article>
+  {{else}}<p class="muted">Nothing found.</p>{{end}}
+{{end}}
+{{end}}{{end}}
