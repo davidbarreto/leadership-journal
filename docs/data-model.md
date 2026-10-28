@@ -1,6 +1,6 @@
-# Data model (draft 2, for review)
+# Data model
 
-Status: **draft, nothing implemented**. SQLite, forward-only migrations.
+Status: **implemented** (migrations `0001` and `0002`). See "Implementation notes" at the end for where the code differs from this design. SQLite, forward-only migrations.
 
 ## Conventions
 
@@ -254,3 +254,18 @@ Incident and post-mortem (owner, follow-up commitments), review cycle, PIP (goal
 ## Open questions
 
 1. QA level codes, when you want them seeded.
+
+## Implementation notes
+
+Where the implementation differs from, or goes beyond, the design above:
+
+- **Reference data is archived with a boolean `archived` column**, not `archived_at` plus a zone. The instant-and-zone rule applies to journal data. The infrastructure tables `app_user` and `session` use plain UTC timestamps (`session.expires_at` is a Unix time) because they are not part of the record.
+- **Drafts and locking** follow the design: `finalized_at` NULL means draft; triggers reject changes and deletes on locked rows, except voiding. Two refinements:
+  - Entries and commitments that belong to a meeting cannot be finalized on their own; they lock with the meeting. That way a draft meeting can always be deleted whole. Voiding a meeting voids what was noted in it.
+  - Nothing can be added to a finalized meeting (a trigger rejects new entries, commitments and answers for it).
+- **Work items** lock only `person_id`, `release_id`, `picked_by`, `stretch`, `stretch_rationale`, `assigned_at` and the creation and finalization stamps. A partial unique index keeps a ticket reference unique among rows that are neither voided nor `moved`.
+- **Views**: only `commitment_current` is a SQL view. Release compliance, work metrics, progress overdue and no-progress streaks are computed by the `domain` package from the rows (`ReleaseCompliant`, `ComputeWorkMetrics`, `ProgressOverdue`, `ConsecutiveNoProgress`), where they are unit-tested. A progress check is any finalized entry whose kind has `requires_outcome = 1`; no kind code is hard-coded.
+- **Documentation contributions** are finalized entries tagged `documentation`, as suggested.
+- **Search** is an FTS5 table kept in sync by triggers on `entry`, `meeting` and `meeting_answer`, so it is updated in the same transaction as any write, including draft edits and deletes. Voided records are filtered out when querying.
+- **Schema present but not yet used by the UI**: `meeting.team_id`, `meeting.metadata`, `entry.corrects_entry_id` (the store accepts it), and `person_level`-based reporting beyond the history shown on the person page.
+- **Not in the schema yet**: `person.started_on` / `left_on`, incidents, post-mortems, review cycles and PIPs (the "Deferred" list above).

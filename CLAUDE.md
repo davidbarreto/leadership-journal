@@ -40,8 +40,26 @@ Local-only web app to keep notes, organize 1:1s and other meetings, track team p
 ### Learning goal
 - The owner is learning Go through this project and may ask for technical explanations of what was developed. When writing Go, prefer clear, idiomatic code over clever code, and be ready to explain language concepts (packages, interfaces, error handling, goroutines, etc.) used in the change.
 
+## Where things live
+- `internal/domain`: pure types and business rules (validation, compliance, metrics, level history). No I/O, no logging. User-facing validation errors are `*domain.ValidationError` values (created with `invalid(...)`); add new ones the same way so the web layer shows them to the user.
+- `internal/store`: SQLite repositories. Journal tables share the draft, finalized, voided lifecycle; use the helpers in `lifecycle.go`. Inside a transaction use the `Tx` (via the `querier` interface), never `s.db`: there is a single connection and mixing them deadlocks. Never run a query while iterating another one; use `queryAll`. In scan helpers read the row before returning it (`err := r.Scan(&v); return v, err`), never `return v, r.Scan(&v)`.
+- `internal/web`: handlers return `error`; `wrap` maps `ErrNotFound` to 404, user mistakes and journal rules to a one-time flash message on the page the user came from, and everything else to a 500 with only a request id shown. Handlers only parse forms and call the store; no business rules.
+- Schema changes are new numbered files in `internal/store/migrations/`; never edit one that has been applied.
+- Web tests use `newEnv(t)` (real SQLite in a temp directory, controllable clock) and a `client` that behaves like a same-origin browser.
+
+## Security invariants (do not weaken; tests cover them)
+- Loopback only: `config` rejects any other listen address. `Host` must be a loopback name on the listen port.
+- Every state-changing request needs a same-origin `Origin`/`Sec-Fetch-Site` and the session CSRF token; pre-login forms use the double-submit token. Posts go through `rt.protected`/`rt.public`, never around them.
+- No raw HTML from users: Markdown goes through `renderMarkdown` (goldmark, then bluemonday); everything else through `html/template` escaping. The CSP allows no scripts; do not add JavaScript or inline styles without revisiting it.
+- Never log note text, feedback, search queries, form bodies or secrets. Log ids, paths and request ids.
+- The reports (and any future export) include only finalized, non-voided records of people who report to the owner, never drafts, the owner, or the owner's manager.
+- The database, its backups and the data directory stay private (`0600` / `0700`).
+
+## Dependencies are pinned for Go 1.23
+Run `GOTOOLCHAIN=local go get module@version` (and `GOTOOLCHAIN=local go mod tidy`) when changing dependencies. A bare `go get` fetches the newest release, which raises the `go` directive in `go.mod` and downloads a newer toolchain.
+
 ## Design decisions
 - Data model favors an **append-only ledger**: journal rows are drafts until explicitly finalized, then locked by database triggers (voided, never deleted); corrections are new rows. Full design in `docs/data-model.md`.
 - Terminology: always say **journal** (the app's name), never "diary".
 - Security: bind to `127.0.0.1` only, validate the `Host` header, CSRF protection, `SameSite=Strict` session cookies, argon2id password hashing.
-- A report export (for sharing with the owner's manager) is a planned feature; the app itself stays single-user.
+- The report for the owner's manager (printable page or Markdown, finalized records of one report only) is built; the app itself stays single-user.
