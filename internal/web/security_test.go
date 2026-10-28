@@ -150,7 +150,8 @@ func TestSetup_RejectsCrossSiteAndTokenlessPosts(t *testing.T) {
 	// checks it could set the password before the owner does.
 	mustStatus(t, c.do(http.MethodPost, "/setup", good, "Origin", "https://evil.example.com"), http.StatusForbidden)
 	mustStatus(t, c.do(http.MethodPost, "/setup", good, "Sec-Fetch-Site", "cross-site"), http.StatusForbidden)
-	mustStatus(t, c.do(http.MethodPost, "/setup", good, "Origin", "null"), http.StatusForbidden)
+	mustStatus(t, c.do(http.MethodPost, "/setup", good, "Origin", "null", "Sec-Fetch-Site", "cross-site"), http.StatusForbidden)
+	mustStatus(t, c.do(http.MethodPost, "/setup", good, "Origin", "null", "Sec-Fetch-Site", ""), http.StatusForbidden)
 	mustStatus(t, c.do(http.MethodPost, "/setup", url.Values{"password": {testPassword}, "confirm": {testPassword}}), http.StatusForbidden)
 	mustStatus(t, c.do(http.MethodPost, "/setup", url.Values{"preauth_token": {"guessed"}, "password": {testPassword}, "confirm": {testPassword}}), http.StatusForbidden)
 
@@ -270,6 +271,18 @@ func TestStateChangingRequestsNeedTheCSRFToken(t *testing.T) {
 	mustStatus(t, c.do(http.MethodPost, "/logout", url.Values{"csrf_token": {good}}), http.StatusSeeOther)
 }
 
+// Regression: the app sends Referrer-Policy: no-referrer, and browsers then
+// send "Origin: null" even on same-origin form posts, which made the first
+// password setup fail with 403.
+func TestSetup_AcceptsNullOriginFromSameOriginBrowserPost(t *testing.T) {
+	env := newEnv(t)
+	c := env.client()
+	token := preAuthField.FindStringSubmatch(c.get("/setup").Body.String())[1]
+	form := url.Values{"preauth_token": {token}, "password": {testPassword}, "confirm": {testPassword}}
+
+	mustStatus(t, c.do(http.MethodPost, "/setup", form, "Origin", "null"), http.StatusSeeOther)
+}
+
 func TestCrossSiteRequestsAreRejectedEvenWithAValidToken(t *testing.T) {
 	env := newEnv(t)
 	c := env.loggedIn()
@@ -278,7 +291,9 @@ func TestCrossSiteRequestsAreRejectedEvenWithAValidToken(t *testing.T) {
 	for _, h := range [][]string{
 		{"Origin", "https://evil.example.com"},
 		{"Origin", "http://127.0.0.1:9999"},
-		{"Origin", "null"},
+		{"Origin", "null", "Sec-Fetch-Site", "cross-site"},
+		{"Origin", "null", "Sec-Fetch-Site", "same-site"},
+		{"Origin", "null", "Sec-Fetch-Site", ""},
 		{"Sec-Fetch-Site", "cross-site"},
 		{"Sec-Fetch-Site", "same-site"},
 	} {

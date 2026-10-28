@@ -73,7 +73,11 @@ func (s *Server) sameOrigin(next http.Handler) http.Handler {
 				s.rejectCrossSite(w, r, "Sec-Fetch-Site", site)
 				return
 			}
-			if origin := r.Header.Get("Origin"); origin != "" {
+			// Our Referrer-Policy is no-referrer, so browsers send "Origin: null"
+			// even on same-origin form posts. Trust it only when Sec-Fetch-Site
+			// vouches for the request, which was already checked above.
+			sameOriginFetch := r.Header.Get("Sec-Fetch-Site") == "same-origin"
+			if origin := r.Header.Get("Origin"); origin != "" && !(origin == "null" && sameOriginFetch) {
 				u, err := url.Parse(origin)
 				if err != nil || u.Scheme != "http" || !s.hosts[u.Host] {
 					s.rejectCrossSite(w, r, "Origin", origin)
