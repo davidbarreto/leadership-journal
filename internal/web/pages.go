@@ -4,7 +4,10 @@ import "net/http"
 
 // registerPages adds the journal's own pages to the router.
 func (s *Server) registerPages(rt router) {
-	rt.protected("GET /people", s.dashboard) // placeholder until the people pages exist
+	s.registerPeople(rt)
+	s.registerMeetings(rt)
+	s.registerEntries(rt)
+	s.registerCommitments(rt)
 }
 
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) error {

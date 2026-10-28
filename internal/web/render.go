@@ -89,6 +89,12 @@ func funcMap() template.FuncMap {
 		},
 		"inputDateTime": func(t time.Time) string { return t.Format("2006-01-02T15:04") },
 		"pct":           func(f float64) string { return fmt.Sprintf("%.0f%%", f) },
+		"deref": func(p *int64) int64 {
+			if p == nil {
+				return 0
+			}
+			return *p
+		},
 	}
 }
 

@@ -1,0 +1,26 @@
+{{define "title"}}Meetings{{end}}
+{{define "content"}}{{with .Data}}
+<h1>Meetings</h1>
+<form method="post" action="/meetings" class="card noprint">
+  {{template "csrf" $}}<input type="hidden" name="back" value="/meetings">
+  <h3>Start a meeting</h3>
+  <div class="row">
+    <label>Kind <select name="kind">{{range .Kinds}}<option value="{{.Code}}">{{.Label}}</option>{{end}}</select></label>
+    <label>About (required for 1:1s) <select name="person_id"><option value="">Nobody in particular</option>{{range .People}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label>
+    <label>When <input type="datetime-local" name="starts_at" value="{{.StartsAt}}" required></label>
+  </div>
+  <label>Title (optional) <input type="text" name="title"></label>
+  <button type="submit">Start as draft</button>
+</form>
+{{if .Rows}}
+<table>
+  <tr><th>When</th><th>Meeting</th><th>About</th><th></th></tr>
+  {{range .Rows}}<tr>
+    <td>{{datetime .Meeting.StartsAt}}</td>
+    <td><a href="/meetings/{{.Meeting.ID}}">{{.KindLabel}}{{if .Meeting.Title}}: {{.Meeting.Title}}{{end}}</a></td>
+    <td>{{.PersonName}}</td>
+    <td>{{template "lifecycleBadge" .Meeting}}</td>
+  </tr>{{end}}
+</table>
+{{else}}<p class="muted">No meetings yet.</p>{{end}}
+{{end}}{{end}}

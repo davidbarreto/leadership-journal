@@ -1,0 +1,30 @@
+{{define "lifecycleBadge"}}{{if .IsVoided}}<span class="badge bad">Voided</span>{{else if .IsFinalized}}<span class="badge ok">Finalized</span>{{else}}<span class="badge">Draft</span>{{end}}{{end}}
+
+{{define "entry"}}
+<article class="card{{if .Entry.IsDraft}} draft{{end}}{{if .Entry.IsVoided}} voided{{end}}">
+  <div class="meta">
+    <span class="badge">{{.KindLabel}}</span>
+    {{if .Entry.Outcome}}<span class="badge {{if eq .Entry.Outcome "progress"}}ok{{else if eq .Entry.Outcome "no_progress"}}bad{{else}}warn{{end}}">{{human (print .Entry.Outcome)}}</span>{{end}}
+    {{date .Entry.OccurredAt}}
+    {{template "lifecycleBadge" .Entry}}
+    <span class="tags">{{range .Entry.Tags}}<span class="badge">{{.}}</span>{{end}}</span>
+  </div>
+  <div class="prose">{{md .Entry.Body}}</div>
+  {{if .Entry.IsVoided}}<p class="muted">Voided: {{.Entry.VoidReason}}</p>{{end}}
+  <div class="actions noprint">
+    {{if .Entry.IsDraft}}
+      <a class="button secondary" href="/entries/{{.Entry.ID}}/edit?back={{.Back}}">Edit</a>
+      {{if not .Entry.MeetingID}}
+      <form method="post" action="/entries/{{.Entry.ID}}/finalize" class="inline">{{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}"><button class="secondary">Finalize</button></form>
+      {{end}}
+      <form method="post" action="/entries/{{.Entry.ID}}/delete" class="inline">{{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}"><button class="danger">Delete</button></form>
+    {{else if not .Entry.IsVoided}}
+      <details><summary>Void this entry</summary>
+        <form method="post" action="/entries/{{.Entry.ID}}/void">{{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}">
+          <input type="text" name="reason" placeholder="Why is it wrong? (kept on record)" required>
+          <button class="danger">Void</button></form>
+      </details>
+    {{end}}
+  </div>
+</article>
+{{end}}

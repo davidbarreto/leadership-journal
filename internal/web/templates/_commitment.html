@@ -1,0 +1,45 @@
+{{define "commitment"}}
+<article class="card{{if .C.IsDraft}} draft{{end}}{{if .C.IsVoided}} voided{{end}}">
+  <div class="meta">
+    <span class="badge">{{if eq .C.Kind "learning"}}Learning goal{{else}}Task{{end}}</span>
+    <span class="badge">{{if eq .C.Direction "they_owe_me"}}They owe me{{else}}I owe them{{end}}</span>
+    <span class="badge {{if eq .C.Status "done"}}ok{{else if eq .C.Status "open"}}warn{{else}}bad{{end}}">{{human (print .C.Status)}}</span>
+    {{if .Overdue}}<span class="badge bad">Overdue</span>{{end}}
+    {{with .C.DueOn}}Due {{datePtr .}}{{end}}
+    {{template "lifecycleBadge" .C}}
+    {{if .PersonName}}· {{.PersonName}}{{end}}
+  </div>
+  <p>{{.C.Content}}</p>
+  {{if .C.Deliverable}}<p><strong>Deliverable:</strong> {{.C.Deliverable}}</p>{{end}}
+  {{if .C.StatusNote}}<p class="muted">{{.C.StatusNote}}</p>{{end}}
+  {{if .C.IsVoided}}<p class="muted">Voided: {{.C.VoidReason}}</p>{{else}}
+  <form method="post" action="/commitments/{{.C.ID}}/status" class="noprint">
+    {{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}">
+    <div class="row">
+      <select name="status">
+        <option value="open"{{if eq .C.Status "open"}} selected{{end}}>Open</option>
+        <option value="done"{{if eq .C.Status "done"}} selected{{end}}>Done</option>
+        <option value="missed"{{if eq .C.Status "missed"}} selected{{end}}>Missed</option>
+        <option value="dropped"{{if eq .C.Status "dropped"}} selected{{end}}>Dropped</option>
+      </select>
+      <input type="text" name="note" placeholder="Note or evidence (e.g. what was presented)">
+      <span><button class="secondary">Update status</button></span>
+    </div>
+  </form>
+  <div class="actions noprint">
+    {{if .C.IsDraft}}
+      {{if not .C.MeetingID}}
+      <form method="post" action="/commitments/{{.C.ID}}/finalize" class="inline">{{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}"><button class="secondary">Finalize</button></form>
+      {{end}}
+      <form method="post" action="/commitments/{{.C.ID}}/delete" class="inline">{{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}"><button class="danger">Delete</button></form>
+    {{else}}
+      <details><summary>Void this commitment</summary>
+        <form method="post" action="/commitments/{{.C.ID}}/void">{{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}">
+          <input type="text" name="reason" placeholder="Why is it wrong? (kept on record)" required>
+          <button class="danger">Void</button></form>
+      </details>
+    {{end}}
+  </div>
+  {{end}}
+</article>
+{{end}}

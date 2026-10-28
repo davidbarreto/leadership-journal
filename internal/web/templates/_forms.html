@@ -1,0 +1,39 @@
+{{define "entryForm"}}
+<form method="post" action="/entries" class="card noprint">
+  {{template "csrf" .}}
+  <input type="hidden" name="back" value="{{.Back}}">
+  {{if .MeetingID}}<input type="hidden" name="meeting_id" value="{{.MeetingID}}">{{end}}
+  {{if .PersonID}}<input type="hidden" name="person_id" value="{{.PersonID}}">{{else}}
+  <label>About <select name="person_id" required><option value="">Choose a person…</option>{{range .People}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label>
+  {{end}}
+  <div class="row">
+    <label>Kind <select name="kind">{{range .Kinds}}<option value="{{.Code}}">{{.Label}}</option>{{end}}</select></label>
+    <label>Outcome (progress checks only)
+      <select name="outcome"><option value="">–</option><option value="progress">Progress</option><option value="no_progress">No progress</option><option value="pending">Pending</option></select></label>
+    {{if not .MeetingID}}<label>Date <input type="date" name="occurred_at" value="{{.Today}}"></label>{{end}}
+  </div>
+  <label>Note (Markdown) <textarea name="body" required></textarea></label>
+  <label>Tags (comma separated) <input type="text" name="tags" list="known-tags" autocomplete="off"></label>
+  <datalist id="known-tags">{{range .Tags}}<option value="{{.}}">{{end}}</datalist>
+  <button type="submit">Add as draft</button>
+</form>
+{{end}}
+
+{{define "commitmentForm"}}
+<form method="post" action="/commitments" class="card noprint">
+  {{template "csrf" .}}
+  <input type="hidden" name="back" value="{{.Back}}">
+  {{if .MeetingID}}<input type="hidden" name="meeting_id" value="{{.MeetingID}}">{{end}}
+  {{if .PersonID}}<input type="hidden" name="person_id" value="{{.PersonID}}">{{else}}
+  <label>About <select name="person_id" required><option value="">Choose a person…</option>{{range .People}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label>
+  {{end}}
+  <div class="row">
+    <label>Kind <select name="kind"><option value="task">Task</option><option value="learning">Learning goal</option></select></label>
+    <label>Direction <select name="direction"><option value="they_owe_me">They owe me</option><option value="i_owe_them">I owe them</option></select></label>
+    <label>Due <input type="date" name="due_on"></label>
+  </div>
+  <label>What <input type="text" name="content" required></label>
+  <label>Deliverable (required for learning goals: a demo or presentation, not "I read it") <input type="text" name="deliverable"></label>
+  <button type="submit">Add as draft</button>
+</form>
+{{end}}

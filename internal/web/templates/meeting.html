@@ -1,0 +1,55 @@
+{{define "title"}}{{.Data.KindLabel}}{{end}}
+{{define "content"}}{{with .Data}}
+<h1>{{.KindLabel}}{{if .Meeting.Title}}: {{.Meeting.Title}}{{end}}</h1>
+<p class="muted">
+  {{datetime .Meeting.StartsAt}}{{if .PersonName}} · <a href="/people/{{.Meeting.PersonID}}">{{.PersonName}}</a>{{end}}
+  {{template "lifecycleBadge" .Meeting}}
+</p>
+{{if .Meeting.IsVoided}}<p class="flash error">Voided: {{.Meeting.VoidReason}}</p>{{end}}
+
+{{if .Editable}}
+<form method="post" action="/meetings/{{.Meeting.ID}}">
+  {{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}">
+  <div class="row">
+    <label>Title <input type="text" name="title" value="{{.Meeting.Title}}"></label>
+    <label>When <input type="datetime-local" name="starts_at" value="{{.StartsAt}}" required></label>
+    <label>About
+      <select name="person_id"><option value="">Nobody in particular</option>
+        {{range .People}}<option value="{{.ID}}"{{if $.Data.Meeting.PersonID}}{{if eq (deref $.Data.Meeting.PersonID) .ID}} selected{{end}}{{end}}>{{.Name}}</option>{{end}}
+      </select></label>
+  </div>
+  {{range .Fields}}
+  <label>{{.Text}} <textarea name="answer_{{.Key}}" rows="3">{{.Value}}</textarea></label>
+  {{end}}
+  <label>Notes (Markdown) <textarea name="notes" rows="8">{{.Meeting.Notes}}</textarea></label>
+  <button type="submit">Save draft</button>
+</form>
+{{else}}
+  {{range .Answers}}<h3>{{.PromptText}}</h3><div class="prose">{{md .Text}}</div>{{end}}
+  {{if .Meeting.Notes}}<h3>Notes</h3><div class="prose">{{md .Meeting.Notes}}</div>{{end}}
+{{end}}
+
+<h2>Noted in this meeting</h2>
+{{range .Entries}}{{template "entry" .}}{{else}}<p class="muted">No notes yet.</p>{{end}}
+{{if .Editable}}{{template "entryForm" .EntryForm}}{{end}}
+
+<h2>Commitments and action items</h2>
+{{range .Commitments}}{{template "commitment" .}}{{else}}<p class="muted">None yet.</p>{{end}}
+{{if .Editable}}{{template "commitmentForm" .CommitForm}}{{end}}
+
+<div class="noprint">
+{{if .Editable}}
+  <form method="post" action="/meetings/{{.Meeting.ID}}/finalize" class="inline">{{template "csrf" .}}
+    <button>Finalize meeting</button></form>
+  <form method="post" action="/meetings/{{.Meeting.ID}}/delete" class="inline">{{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}">
+    <button class="danger">Delete this draft</button></form>
+  <p class="muted">Finalizing locks the meeting and everything noted in it. A locked record can later be voided, with a reason, but never edited or deleted.</p>
+{{else if not .Meeting.IsVoided}}
+  <details><summary>Void this meeting</summary>
+    <form method="post" action="/meetings/{{.Meeting.ID}}/void">{{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}">
+      <input type="text" name="reason" placeholder="Why is it wrong? (kept on record)" required>
+      <button class="danger">Void meeting</button></form>
+  </details>
+{{end}}
+</div>
+{{end}}{{end}}

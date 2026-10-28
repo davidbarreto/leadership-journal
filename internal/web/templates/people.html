@@ -1,0 +1,27 @@
+{{define "peopleTable"}}
+<table>
+  <tr><th>Name</th><th>Role</th><th>Team</th><th>Level</th><th>Improvement journal</th></tr>
+  {{range .}}
+  <tr>
+    <td><a href="/people/{{.Person.ID}}">{{.Person.Name}}</a></td>
+    <td>{{.Person.RoleTitle}}</td>
+    <td>{{.TeamName}}</td>
+    <td>{{.Level}}</td>
+    <td>{{with .Progress}}
+      {{if .LastCheck}}Last check {{datePtr .LastCheck}}{{else}}No check yet{{end}}
+      {{if .Overdue}}<span class="badge warn">Overdue</span>{{end}}
+      {{if ge .NoProgressStreak 2}}<span class="badge bad">NO PROGRESS ×{{.NoProgressStreak}}</span>{{end}}
+    {{end}}</td>
+  </tr>
+  {{end}}
+</table>
+{{end}}
+{{define "title"}}People{{end}}
+{{define "content"}}
+<h1>People</h1>
+<p><a class="button" href="/people/new">Add a person</a></p>
+{{if .Data.Empty}}<p class="muted">No people yet. Add the people you manage, your own manager, and yourself.</p>{{end}}
+{{if .Data.Reports}}<h2>Reports</h2>{{template "peopleTable" .Data.Reports}}{{end}}
+{{if .Data.Managers}}<h2>Your manager</h2>{{template "peopleTable" .Data.Managers}}{{end}}
+{{if .Data.Selves}}<h2>You</h2>{{template "peopleTable" .Data.Selves}}{{end}}
+{{end}}

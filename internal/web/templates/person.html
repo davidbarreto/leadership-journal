@@ -1,0 +1,76 @@
+{{define "title"}}{{.Data.Person.Name}}{{end}}
+{{define "content"}}{{with .Data}}
+<h1>{{.Person.Name}}</h1>
+<p class="muted">
+  {{.Person.RoleTitle}}{{if .TeamName}} · {{.TeamName}}{{end}} · {{human (print .Person.Relationship)}}{{if .Level}} · Level {{.Level}}{{end}}
+</p>
+<p class="noprint">
+  <a href="/people/{{.Person.ID}}/edit">Edit</a>
+  {{if eq .Person.Relationship "report"}} · <a href="/people/{{.Person.ID}}/report">Report for your manager</a>{{end}}
+</p>
+
+{{with .Progress}}
+<section class="card">
+  <h3>Improvement journal</h3>
+  <p>
+    {{if .LastCheck}}Last progress check: {{datePtr .LastCheck}}{{else}}No progress check yet.{{end}}
+    {{if .Overdue}}<span class="badge warn">Overdue: due every 2 weeks</span>{{end}}
+    {{if ge .NoProgressStreak 2}}<span class="badge bad">NO PROGRESS ×{{.NoProgressStreak}} in a row</span>{{end}}
+  </p>
+</section>
+{{end}}
+
+<h2>Level</h2>
+{{if .History}}
+<table>
+  <tr><th>Level</th><th>Title</th><th>From</th></tr>
+  {{range .History}}<tr><td>{{.Code}}</td><td>{{.Title}}</td><td>{{date .From}}</td></tr>{{end}}
+</table>
+{{else}}<p class="muted">No level recorded yet.</p>{{end}}
+<form method="post" action="/people/{{.Person.ID}}/level" class="noprint">
+  {{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}">
+  <div class="row">
+    <select name="level_id">{{range .Levels}}<option value="{{.ID}}">{{.Code}} · {{.Title}}</option>{{end}}</select>
+    <input type="date" name="effective_from" required>
+    <span><button class="secondary">Record level</button></span>
+  </div>
+</form>
+
+<h2>Notes</h2>
+{{template "entryForm" .EntryForm}}
+{{range .Entries}}{{template "entry" .}}{{else}}<p class="muted">Nothing noted yet.</p>{{end}}
+
+<h2>Commitments</h2>
+{{template "commitmentForm" .CommitForm}}
+{{range .Commitments}}{{template "commitment" .}}{{else}}<p class="muted">No commitments yet.</p>{{end}}
+
+<h2>Meetings</h2>
+{{if .Meetings}}
+<table>
+  {{range .Meetings}}<tr>
+    <td><a href="/meetings/{{.Meeting.ID}}">{{.KindLabel}}{{if .Meeting.Title}}: {{.Meeting.Title}}{{end}}</a></td>
+    <td>{{datetime .Meeting.StartsAt}}</td><td>{{template "lifecycleBadge" .Meeting}}</td>
+  </tr>{{end}}
+</table>
+{{else}}<p class="muted">No meetings yet.</p>{{end}}
+
+<h2>Work</h2>
+{{if .Work}}
+<div class="grid">
+  <div class="card"><div class="stat">{{.Metrics.Above}}</div>stretch tasks counted</div>
+  <div class="card"><div class="stat">{{pct .Metrics.PctAboveSelf}}</div>of stretch tasks picked by them</div>
+  <div class="card"><div class="stat">{{pct .Metrics.PctAboveLead}}</div>of stretch tasks assigned by you</div>
+  <div class="card"><div class="stat">{{pct .Metrics.PctInvestigated}}</div>of tasks with an investigation</div>
+</div>
+{{range .Standings}}<p>{{.Release.Name}}:
+  {{if .Compliant}}<span class="badge ok">Has a stretch task</span>{{else}}<span class="badge bad">No stretch task yet</span>{{end}}</p>{{end}}
+<table>
+  <tr><th>Task</th><th>Release</th><th>Stretch</th><th>Picked by</th><th>Status</th><th></th></tr>
+  {{range .Work}}<tr>
+    <td><a href="/work/{{.Item.ID}}">{{.Item.Title}}</a></td><td>{{.ReleaseName}}</td>
+    <td>{{human (print .Item.Stretch)}}</td><td>{{human (print .Item.PickedBy)}}</td><td>{{human (print .Item.Status)}}</td>
+    <td>{{template "lifecycleBadge" .Item}}</td>
+  </tr>{{end}}
+</table>
+{{else}}<p class="muted">No tasks yet. <a href="/work">Add one from the Work page.</a></p>{{end}}
+{{end}}{{end}}

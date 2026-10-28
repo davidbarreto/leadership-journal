@@ -1,0 +1,24 @@
+{{define "title"}}Edit entry{{end}}
+{{define "content"}}{{with .Data}}
+<h1>Edit entry</h1>
+<form method="post" action="/entries/{{.Entry.ID}}">
+  {{template "csrf" $}}<input type="hidden" name="back" value="{{.Back}}">
+  <div class="row">
+    <label>Kind
+      <select name="kind">{{range .Kinds}}<option value="{{.Code}}"{{if eq .Code $.Data.Entry.Kind}} selected{{end}}>{{.Label}}</option>{{end}}</select></label>
+    <label>Outcome (progress checks only)
+      <select name="outcome">
+        <option value="">–</option>
+        <option value="progress"{{if eq $.Data.Entry.Outcome "progress"}} selected{{end}}>Progress</option>
+        <option value="no_progress"{{if eq $.Data.Entry.Outcome "no_progress"}} selected{{end}}>No progress</option>
+        <option value="pending"{{if eq $.Data.Entry.Outcome "pending"}} selected{{end}}>Pending</option>
+      </select></label>
+    {{if not .Entry.MeetingID}}<label>Date <input type="date" name="occurred_at" value="{{.Date}}"></label>{{end}}
+  </div>
+  <label>Note (Markdown) <textarea name="body" required>{{.Entry.Body}}</textarea></label>
+  <label>Tags (comma separated) <input type="text" name="tags" value="{{.TagsText}}" list="known-tags" autocomplete="off"></label>
+  <datalist id="known-tags">{{range .Tags}}<option value="{{.}}">{{end}}</datalist>
+  <button type="submit">Save</button>
+  <a class="button secondary" href="{{.Back}}">Cancel</a>
+</form>
+{{end}}{{end}}

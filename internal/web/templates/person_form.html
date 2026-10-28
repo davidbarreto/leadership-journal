@@ -1,0 +1,23 @@
+{{define "title"}}{{.Data.Title}}{{end}}
+{{define "content"}}{{with .Data}}
+<h1>{{.Title}}</h1>
+<form method="post" action="{{.Action}}">
+  {{template "csrf" $}}
+  <label>Name <input type="text" name="name" value="{{.Person.Name}}" required autofocus></label>
+  <label>Role <input type="text" name="role_title" value="{{.Person.RoleTitle}}"></label>
+  <div class="row">
+    <label>Relationship
+      <select name="relationship">
+        <option value="report"{{if eq .Person.Relationship "report"}} selected{{end}}>Reports to me</option>
+        <option value="manager"{{if eq .Person.Relationship "manager"}} selected{{end}}>My manager</option>
+        <option value="self"{{if eq .Person.Relationship "self"}} selected{{end}}>Me</option>
+      </select></label>
+    <label>Team (reports only)
+      <select name="team_id"><option value="">None</option>
+        {{range .Teams}}<option value="{{.ID}}"{{if $.Data.Person.TeamID}}{{if eq (deref $.Data.Person.TeamID) .ID}} selected{{end}}{{end}}>{{.Name}}</option>{{end}}
+      </select></label>
+  </div>
+  <button type="submit">Save</button>
+  <a class="button secondary" href="/people">Cancel</a>
+</form>
+{{end}}{{end}}
