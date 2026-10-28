@@ -22,8 +22,9 @@ var migrationFiles embed.FS
 
 // Store is the SQLite-backed repository for every journal entity.
 type Store struct {
-	db  *sql.DB
-	now func() time.Time
+	db   *sql.DB
+	now  func() time.Time
+	path string
 }
 
 // Open opens (creating if needed) the database at path, applies pending
@@ -58,7 +59,7 @@ func openWith(path string, now func() time.Time, migrations fs.FS) (*Store, erro
 		db.Close()
 		return nil, err
 	}
-	return &Store{db: db, now: now}, nil
+	return &Store{db: db, now: now, path: path}, nil
 }
 
 func dsn(path string) string {
@@ -178,18 +179,50 @@ func applyMigration(db *sql.DB, migrations fs.FS, file string) error {
 	return tx.Commit()
 }
 
-// backupDatabase writes a consistent snapshot next to the database file.
+// backupDatabase takes the safety copy made before pending migrations.
 func backupDatabase(db *sql.DB, dbPath, nextVersion string) (string, error) {
-	backup := fmt.Sprintf("%s.pre-%s.bak", dbPath, nextVersion)
-	// VACUUM INTO needs a missing or empty target; creating it first lets us
-	// set the restrictive mode before any data is written.
-	f, err := os.OpenFile(backup, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0o600)
+	target := uniquePath(fmt.Sprintf("%s.pre-%s.bak", dbPath, nextVersion))
+	return target, snapshot(db, target)
+}
+
+// Backup writes a consistent snapshot of the whole journal next to the
+// database file and returns its path. Unlike copying the file, it is safe
+// while the app is running. Earlier backups are never overwritten.
+func (s *Store) Backup(ctx context.Context) (string, error) {
+	target := uniquePath(fmt.Sprintf("%s.%s.bak", s.path, s.now().Format("20060102-150405")))
+	if err := snapshot(s.db, target); err != nil {
+		return "", fmt.Errorf("back up the journal: %w", err)
+	}
+	return target, nil
+}
+
+// uniquePath returns base, or base with a counter before the extension if a
+// file of that name exists, so a backup can never replace an earlier one.
+func uniquePath(base string) string {
+	if _, err := os.Stat(base); os.IsNotExist(err) {
+		return base
+	}
+	stem := strings.TrimSuffix(base, ".bak")
+	for i := 2; ; i++ {
+		candidate := fmt.Sprintf("%s.%d.bak", stem, i)
+		if _, err := os.Stat(candidate); os.IsNotExist(err) {
+			return candidate
+		}
+	}
+}
+
+// snapshot writes a consistent copy of the database to target. VACUUM INTO
+// needs a missing or empty target; creating it first lets us set the
+// restrictive mode before any data is written.
+func snapshot(db *sql.DB, target string) error {
+	f, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
 	if err != nil {
-		return "", err
+		return err
 	}
 	f.Close()
-	if _, err := db.Exec(`VACUUM INTO ?`, backup); err != nil {
-		return "", err
+	if _, err := db.Exec(`VACUUM INTO ?`, target); err != nil {
+		os.Remove(target)
+		return err
 	}
-	return backup, nil
+	return nil
 }

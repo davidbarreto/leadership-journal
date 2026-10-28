@@ -76,3 +76,10 @@ func (s *Store) DeleteExpiredSessions(ctx context.Context, now time.Time) (int64
 	}
 	return res.RowsAffected()
 }
+
+// DeleteOtherSessions logs out every session except the given one, used after
+// a password change so a forgotten browser cannot stay logged in.
+func (s *Store) DeleteOtherSessions(ctx context.Context, keepIDHash string) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM session WHERE id_hash <> ?`, keepIDHash)
+	return err
+}

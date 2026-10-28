@@ -77,3 +77,25 @@ func TestSessions(t *testing.T) {
 		t.Errorf("deleted session still valid: %v", err)
 	}
 }
+
+func TestDeleteOtherSessions(t *testing.T) {
+	s := newTestStore(t)
+	now := day(2024, 3, 1)
+	for _, h := range []string{"keep", "other-1", "other-2"} {
+		if err := s.CreateSession(ctx, h, "csrf-"+h, now.Add(time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := s.DeleteOtherSessions(ctx, "keep"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.GetSession(ctx, "keep", now); err != nil {
+		t.Errorf("the current session must survive: %v", err)
+	}
+	for _, h := range []string{"other-1", "other-2"} {
+		if _, err := s.GetSession(ctx, h, now); !errors.Is(err, ErrNotFound) {
+			t.Errorf("session %s should be gone, got %v", h, err)
+		}
+	}
+}
