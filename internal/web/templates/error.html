@@ -1,0 +1,9 @@
+{{define "title"}}Error {{.Data.Code}}{{end}}
+{{define "content"}}
+<section class="narrow">
+  <h1>{{.Data.Code}}</h1>
+  <p>{{.Data.Message}}</p>
+  {{if .Data.RequestID}}<p class="muted">Reference: <code>{{.Data.RequestID}}</code></p>{{end}}
+  <p><a href="/">Back to the dashboard</a></p>
+</section>
+{{end}}

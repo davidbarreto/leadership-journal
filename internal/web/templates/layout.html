@@ -1,0 +1,29 @@
+{{define "csrf"}}<input type="hidden" name="csrf_token" value="{{.CSRF}}">{{end}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{block "title" .}}Leadership Journal{{end}} · Leadership Journal</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+{{if .Authed}}
+<header class="top">
+  <a class="brand" href="/">Leadership Journal</a>
+  <nav>
+    <a href="/"{{if eq .Active "dashboard"}} class="active"{{end}}>Dashboard</a>
+    <a href="/people"{{if eq .Active "people"}} class="active"{{end}}>People</a>
+    <a href="/meetings"{{if eq .Active "meetings"}} class="active"{{end}}>Meetings</a>
+    <a href="/work"{{if eq .Active "work"}} class="active"{{end}}>Work</a>
+    <a href="/search"{{if eq .Active "search"}} class="active"{{end}}>Search</a>
+    <a href="/settings"{{if eq .Active "settings"}} class="active"{{end}}>Settings</a>
+  </nav>
+  <form method="post" action="/logout" class="inline">{{template "csrf" .}}<button class="link">Log out</button></form>
+</header>
+{{end}}
+<main>
+{{with .Flash}}<div class="flash {{.Kind}}" role="status">{{.Message}}</div>{{end}}
+{{block "content" .}}{{end}}
+</main>
+</body>
+</html>

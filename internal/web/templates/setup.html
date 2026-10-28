@@ -1,0 +1,14 @@
+{{define "title"}}Set up{{end}}
+{{define "content"}}
+<section class="narrow">
+  <h1>Welcome</h1>
+  <p>Choose the password that protects this journal. It never leaves this computer, and there is no way to recover it, so keep it somewhere safe.</p>
+  {{with .Data.Error}}<p class="error">{{.}}</p>{{end}}
+  <form method="post" action="/setup">
+    <input type="hidden" name="preauth_token" value="{{.PreAuth}}">
+    <label>Password (at least 12 characters) <input type="password" name="password" autocomplete="new-password" autofocus required></label>
+    <label>Repeat password <input type="password" name="confirm" autocomplete="new-password" required></label>
+    <button type="submit">Create password</button>
+  </form>
+</section>
+{{end}}
