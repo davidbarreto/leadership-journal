@@ -14,7 +14,7 @@
   <h3>Improvement journal</h3>
   <p>
     {{if .LastCheck}}Last progress check: {{datePtr .LastCheck}}{{else}}No progress check yet.{{end}}
-    {{if .Overdue}}<span class="badge warn">Overdue: due every 2 weeks</span>{{end}}
+    {{if .Overdue}}<span class="badge warn">Overdue: due every {{.IntervalDays}} days</span>{{end}}
     {{if ge .NoProgressStreak 2}}<span class="badge bad">NO PROGRESS ×{{.NoProgressStreak}} in a row</span>{{end}}
   </p>
 </section>

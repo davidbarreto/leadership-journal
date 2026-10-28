@@ -163,10 +163,21 @@ func TestProgressOverdue(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := ProgressOverdue(tc.last, now); got != tc.want {
+			if got := ProgressOverdue(tc.last, now, DefaultProgressDays); got != tc.want {
 				t.Errorf("ProgressOverdue() = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestProgressOverdue_CustomInterval(t *testing.T) {
+	now := day(2024, 6, 15)
+	last := ptr(day(2024, 6, 1)) // 14 days ago
+	if !ProgressOverdue(last, now, 7) {
+		t.Error("14 days ago must be overdue with a 7-day interval")
+	}
+	if ProgressOverdue(last, now, 30) {
+		t.Error("14 days ago must be on time with a 30-day interval")
 	}
 }
 

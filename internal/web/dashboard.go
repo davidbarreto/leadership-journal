@@ -8,13 +8,14 @@ import (
 )
 
 type dashboardPage struct {
-	NoPeople    bool
-	Drafts      store.DraftCounts
-	AnyDrafts   bool
-	Progress    []store.PersonProgress
-	Commitments []commitmentView
-	Release     *domain.Release
-	Compliance  []store.ComplianceRow
+	NoPeople     bool
+	Drafts       store.DraftCounts
+	AnyDrafts    bool
+	Progress     []store.PersonProgress
+	ProgressDays int
+	Commitments  []commitmentView
+	Release      *domain.Release
+	Compliance   []store.ComplianceRow
 }
 
 // dashboard answers "what needs my attention?": drafts waiting to be locked,
@@ -26,7 +27,7 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	page := dashboardPage{NoPeople: len(people) == 0}
+	page := dashboardPage{NoPeople: len(people) == 0, ProgressDays: s.progressDays}
 
 	if page.Drafts, err = s.store.PendingDrafts(ctx); err != nil {
 		return err
@@ -34,7 +35,7 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) error {
 	d := page.Drafts
 	page.AnyDrafts = d.Meetings+d.Entries+d.Commitments+d.WorkItems > 0
 
-	if page.Progress, err = s.store.ProgressStatuses(ctx, s.now()); err != nil {
+	if page.Progress, err = s.store.ProgressStatuses(ctx, s.now(), s.progressDays); err != nil {
 		return err
 	}
 

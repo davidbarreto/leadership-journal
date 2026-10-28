@@ -126,7 +126,7 @@ func TestProgressStatuses(t *testing.T) {
 	check(stale, day(2024, 4, 1), domain.OutcomeNoProgress)
 	check(stale, day(2024, 5, 1), domain.OutcomeNoProgress)
 
-	got, err := s.ProgressStatuses(ctx, now)
+	got, err := s.ProgressStatuses(ctx, now, domain.DefaultProgressDays)
 	if err != nil {
 		t.Fatal(err)
 	}

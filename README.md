@@ -18,6 +18,7 @@ Open the address it prints (`http://127.0.0.1:8080` by default). The first time,
 | Data directory | `-data-dir` | `JOURNAL_DATA_DIR` | `~/.leadership-journal` |
 | Log level | `-log-level` | `JOURNAL_LOG_LEVEL` | `info` |
 | Time zone | `-timezone` | `JOURNAL_TIMEZONE` (then `TZ`) | detected from the system |
+| Days allowed between progress checks | `-progress-days` | `JOURNAL_PROGRESS_DAYS` | `14` |
 
 Flags win over environment variables, which win over defaults. Any address that is not `127.0.0.1`, `localhost` or `::1` is refused at startup. Use a different `-data-dir` for a scratch instance with fake data.
 
@@ -27,7 +28,7 @@ Flags win over environment variables, which win over defaults. Any address that 
 - **Meetings** (1:1, team, standup, other): minutes with a question template per kind, notes in Markdown, action items, and notes about people made in the meeting.
 - **Notes** about a person (objectives, strengths, improvement points, feedback received and given, observations, progress checks) with tags, also between meetings.
 - **Commitments**: promises and action items in both directions, with an append-only status history. Learning goals must name a deliverable (a demo or presentation, not "I read it") and a due date.
-- **Improvement journal**: a progress check every two weeks per person. The dashboard flags overdue checks and `NO PROGRESS` streaks.
+- **Improvement journal**: a progress check per person every 14 days by default (configurable with `-progress-days`). The dashboard flags overdue checks and `NO PROGRESS` streaks.
 - **Work**: releases and tasks per person. You record, at assignment, how much of a stretch the task is for that person (below, at or above), who picked it, and why. Each release shows who has a finalized stretch task. Tasks can be reassigned, keeping the original.
 - **Metrics**: share of stretch tasks picked by the person vs assigned by you, share of tasks with an investigation first, and documentation contributions (finalized notes tagged `documentation`).
 - **Search** across notes, meeting notes and answers.

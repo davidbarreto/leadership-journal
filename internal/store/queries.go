@@ -15,13 +15,14 @@ type PersonProgress struct {
 	Person           domain.Person
 	LastCheck        *time.Time
 	Overdue          bool
+	IntervalDays     int
 	NoProgressStreak int
 }
 
 // ProgressStatuses reports, for every report, when their last progress check
-// was, whether the next one is overdue, and how many no-progress results in a
-// row they have.
-func (s *Store) ProgressStatuses(ctx context.Context, now time.Time) ([]PersonProgress, error) {
+// was, whether the next one is overdue (more than intervalDays ago), and how
+// many no-progress results in a row they have.
+func (s *Store) ProgressStatuses(ctx context.Context, now time.Time, intervalDays int) ([]PersonProgress, error) {
 	people, err := s.ListPeople(ctx, domain.RelationshipReport)
 	if err != nil {
 		return nil, err
@@ -39,7 +40,8 @@ func (s *Store) ProgressStatuses(ctx context.Context, now time.Time) ([]PersonPr
 		out = append(out, PersonProgress{
 			Person:           p,
 			LastCheck:        last,
-			Overdue:          domain.ProgressOverdue(last, now),
+			Overdue:          domain.ProgressOverdue(last, now, intervalDays),
+			IntervalDays:     intervalDays,
 			NoProgressStreak: domain.ConsecutiveNoProgress(outcomes),
 		})
 	}

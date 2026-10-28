@@ -249,3 +249,14 @@ func TestReport_MarkdownDownload(t *testing.T) {
 	mustContain(t, rec, "# Report: Ana Souza", "Great at **mentoring**", "Strength")
 	mustNotContain(t, rec, "DRAFT ONLY")
 }
+
+func TestDashboard_ProgressIntervalIsConfigurable(t *testing.T) {
+	env := newEnv(t)
+	env.srv.progressDays = 30
+	c := env.loggedIn()
+	c.createPerson(t, "Ana", "report")
+
+	page := c.get("/")
+	mustStatus(t, page, http.StatusOK)
+	mustContain(t, page, "due every 30 days")
+}

@@ -26,29 +26,33 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.LogLevel != slog.LevelInfo {
 		t.Errorf("LogLevel = %v, want info", cfg.LogLevel)
 	}
+	if cfg.ProgressDays != 14 {
+		t.Errorf("ProgressDays = %d, want 14", cfg.ProgressDays)
+	}
 }
 
 func TestLoad_Precedence_FlagsOverEnvOverDefaults(t *testing.T) {
 	e := env(map[string]string{
-		"HOME":              "/home/ana",
-		"JOURNAL_ADDR":      "127.0.0.1:9000",
-		"JOURNAL_DATA_DIR":  "/from/env",
-		"JOURNAL_LOG_LEVEL": "debug",
+		"HOME":                  "/home/ana",
+		"JOURNAL_ADDR":          "127.0.0.1:9000",
+		"JOURNAL_DATA_DIR":      "/from/env",
+		"JOURNAL_LOG_LEVEL":     "debug",
+		"JOURNAL_PROGRESS_DAYS": "21",
 	})
 
 	cfg, err := Load(nil, e)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Addr != "127.0.0.1:9000" || cfg.DataDir != "/from/env" || cfg.LogLevel != slog.LevelDebug {
+	if cfg.Addr != "127.0.0.1:9000" || cfg.DataDir != "/from/env" || cfg.LogLevel != slog.LevelDebug || cfg.ProgressDays != 21 {
 		t.Errorf("env values not applied: %+v", cfg)
 	}
 
-	cfg, err = Load([]string{"-addr", "localhost:7000", "-data-dir", "/from/flag", "-log-level", "warn"}, e)
+	cfg, err = Load([]string{"-addr", "localhost:7000", "-data-dir", "/from/flag", "-log-level", "warn", "-progress-days", "7"}, e)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Addr != "localhost:7000" || cfg.DataDir != "/from/flag" || cfg.LogLevel != slog.LevelWarn {
+	if cfg.Addr != "localhost:7000" || cfg.DataDir != "/from/flag" || cfg.LogLevel != slog.LevelWarn || cfg.ProgressDays != 7 {
 		t.Errorf("flags must win over env: %+v", cfg)
 	}
 }
@@ -95,6 +99,8 @@ func TestLoad_Errors(t *testing.T) {
 	}{
 		{"bad log level", []string{"-log-level", "loud"}, home, "log level"},
 		{"unknown timezone", []string{"-timezone", "Mars/Base"}, home, "time zone"},
+		{"zero progress days", []string{"-progress-days", "0"}, home, "progress interval"},
+		{"non-numeric progress days env", nil, env(map[string]string{"HOME": "/h", "JOURNAL_PROGRESS_DAYS": "soon"}), "progress interval"},
 		{"unknown flag", []string{"-nope"}, home, "nope"},
 		{"no home and no data dir", nil, env(nil), "data-dir"},
 	}

@@ -50,7 +50,7 @@ func (s *Server) peopleList(w http.ResponseWriter, r *http.Request) error {
 	for _, t := range teams {
 		teamNames[t.ID] = t.Name
 	}
-	progress, err := s.store.ProgressStatuses(ctx, s.now())
+	progress, err := s.store.ProgressStatuses(ctx, s.now(), s.progressDays)
 	if err != nil {
 		return err
 	}
@@ -267,7 +267,7 @@ func (s *Server) personShow(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		page.Progress = &store.PersonProgress{
-			Person: p, LastCheck: last, Overdue: domain.ProgressOverdue(last, s.now()),
+			Person: p, LastCheck: last, Overdue: domain.ProgressOverdue(last, s.now(), s.progressDays), IntervalDays: s.progressDays,
 			NoProgressStreak: domain.ConsecutiveNoProgress(outcomes),
 		}
 	}

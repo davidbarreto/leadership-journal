@@ -62,7 +62,7 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout 
 		return fmt.Errorf("listen on %s: %w", cfg.Addr, err)
 	}
 	// The listener's real address matters when the port was 0 (any free port).
-	srv, err := web.New(web.Options{Store: st, Addr: ln.Addr().String(), Location: loc, Now: now, Logger: logger})
+	srv, err := web.New(web.Options{Store: st, Addr: ln.Addr().String(), Location: loc, Now: now, Logger: logger, ProgressDays: cfg.ProgressDays})
 	if err != nil {
 		ln.Close()
 		return err

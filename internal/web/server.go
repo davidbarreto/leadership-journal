@@ -15,6 +15,7 @@ import (
 	texttemplate "text/template"
 	"time"
 
+	"leadership-journal/internal/domain"
 	"leadership-journal/internal/store"
 )
 
@@ -37,20 +38,23 @@ type Options struct {
 	Now        func() time.Time
 	Logger     *slog.Logger
 	SessionTTL time.Duration
+	// ProgressDays defaults to domain.DefaultProgressDays.
+	ProgressDays int
 }
 
 // Server is the HTTP application.
 type Server struct {
-	store    *store.Store
-	log      *slog.Logger
-	loc      *time.Location
-	now      func() time.Time
-	ttl      time.Duration
-	hosts    map[string]bool
-	limiter  *loginLimiter
-	pages    map[string]*template.Template
-	reportMD *texttemplate.Template
-	handler  http.Handler
+	store        *store.Store
+	log          *slog.Logger
+	loc          *time.Location
+	now          func() time.Time
+	ttl          time.Duration
+	progressDays int
+	hosts        map[string]bool
+	limiter      *loginLimiter
+	pages        map[string]*template.Template
+	reportMD     *texttemplate.Template
+	handler      http.Handler
 }
 
 // New builds a Server.
@@ -71,6 +75,9 @@ func New(o Options) (*Server, error) {
 	if o.SessionTTL == 0 {
 		o.SessionTTL = defaultSessionTTL
 	}
+	if o.ProgressDays == 0 {
+		o.ProgressDays = domain.DefaultProgressDays
+	}
 	hosts, err := allowedHosts(o.Addr)
 	if err != nil {
 		return nil, err
@@ -84,7 +91,7 @@ func New(o Options) (*Server, error) {
 		return nil, err
 	}
 	s := &Server{
-		store: o.Store, log: o.Logger, loc: o.Location, now: o.Now, ttl: o.SessionTTL,
+		store: o.Store, log: o.Logger, loc: o.Location, now: o.Now, ttl: o.SessionTTL, progressDays: o.ProgressDays,
 		hosts: hosts, pages: pages, reportMD: reportMD,
 		limiter: newLoginLimiter(maxLoginFailures, loginWindow, o.Now),
 	}

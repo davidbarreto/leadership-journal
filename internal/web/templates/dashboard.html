@@ -15,7 +15,7 @@
 
 {{if .Progress}}
 <h2>Improvement journal</h2>
-<p class="muted">A progress check is due every two weeks for each person.</p>
+<p class="muted">A progress check is due every {{.ProgressDays}} days for each person.</p>
 <table>
   <tr><th>Person</th><th>Last check</th><th>Status</th></tr>
   {{range .Progress}}<tr>

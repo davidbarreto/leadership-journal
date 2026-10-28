@@ -262,17 +262,18 @@ func (r Release) Validate() error {
 	return errors.Join(errs...)
 }
 
-// progressInterval is how often the improvement journal is updated.
-const progressInterval = 14
+// DefaultProgressDays is how often, in days, the improvement journal is
+// updated unless configured otherwise.
+const DefaultProgressDays = 14
 
 // ProgressOverdue reports whether a person's last finalized progress check is
-// older than two weeks (or does not exist).
-func ProgressOverdue(last *time.Time, now time.Time) bool {
+// older than intervalDays (or does not exist).
+func ProgressOverdue(last *time.Time, now time.Time, intervalDays int) bool {
 	if last == nil {
 		return true
 	}
 	days := int(dateOnly(now).Sub(dateOnly(*last)).Hours() / 24)
-	return days > progressInterval
+	return days > intervalDays
 }
 
 // ConsecutiveNoProgress counts the leading no_progress outcomes of a list
