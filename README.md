@@ -9,7 +9,7 @@ Local-only web app to keep notes, organize 1:1s and other meetings, track perfor
 - Meetings: 1:1s and others, with notes and action items.
 - Bi-weekly improvement journal per person (what was learned, how it was applied, `progress` / `no_progress`).
 - Learning goals with a deadline and an observable deliverable (demo, presentation).
-- Release tasks tagged by level relative to the person and who picked them; metrics derived from them.
+- Release tasks with the lead's per-person stretch judgment (below / at / above) and who picked them; metrics derived from them.
 - Documentation contributions and investigation records.
 - Incidents and post-mortems, feedback, review cycles, PIPs.
 - Full-text search and history (append-only ledger).

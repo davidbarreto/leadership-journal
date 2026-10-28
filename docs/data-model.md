@@ -16,7 +16,7 @@ Status: **draft, nothing implemented**. SQLite, forward-only migrations.
 Every journal row (meeting, entry, answer, commitment, work item) has `finalized_at`:
 
 - `NULL` = **draft**: editable, hard-deletable, excluded from metrics and exports, still searchable.
-- set = **locked**: SQLite triggers reject `UPDATE` and `DELETE`, except for setting `voided_at`/`void_reason`. This is enforced in the database and covered by tests.
+- set = **locked**: SQLite triggers reject `UPDATE` and `DELETE`, except for setting `voided_at`/`void_reason` (work items are the one exception: only their judgment columns lock, see `work_item`). This is enforced in the database and covered by tests.
 - Finalizing a **meeting** locks it and everything created in it (answers, entries, commitments) in one transaction. Standalone entries are finalized individually.
 - A locked row that is wrong is **voided** (hidden by default, never removed). To correct it, add a new row; an entry may reference the one it corrects (`corrects_entry_id`).
 - Reference data (teams, levels, kinds, tags, releases, prompts) is ordinary mutable data.
@@ -41,7 +41,7 @@ team 1─* person 1─* person_level *─1 level
 `id`, `name` UNIQUE, `created_at`.
 
 ### level
-Seniority scale. Used for people and for task complexity. Ranks are only comparable **within a track**.
+Seniority scale for people. Ranks are only comparable **within a track**.
 
 | column | type | notes |
 |---|---|---|
@@ -50,7 +50,7 @@ Seniority scale. Used for people and for task complexity. Ranks are only compara
 | code | TEXT NOT NULL UNIQUE | e.g. `E4`, `EM2` |
 | title | TEXT NOT NULL | seniority name, e.g. `Senior` |
 | rank | INTEGER NOT NULL | higher = more senior; UNIQUE (track, rank). Integers seeded with gaps of 10 so a level can be inserted between two others without renumbering |
-| rubric | TEXT | what makes a task of this level hard (scope, ambiguity, system knowledge, coordination) |
+| expectations | TEXT | what is expected of someone at this level (reference for reviews) |
 | archived_at | TEXT NULL | |
 
 Seed:
@@ -212,27 +212,30 @@ A task a person worked on in a release. Entered manually; links are optional sin
 | release_id | INTEGER NOT NULL → release | |
 | title | TEXT NOT NULL | |
 | external_ref | TEXT NULL | Jira key/URL |
-| complexity_level_id | INTEGER NOT NULL → level | rated **at assignment**; must be in the same track as the person's level then |
-| rating_rationale | TEXT | why this level |
-| rated_at | TEXT NOT NULL | |
+| stretch | TEXT NOT NULL | `below` \| `at` \| `above`: how much of a stretch this task is **for this person**, judged by the lead at assignment |
+| stretch_rationale | TEXT NOT NULL | why, e.g. new area for them, or they did the same before |
 | picked_by | TEXT NOT NULL | `self` \| `lead` |
-| status | TEXT NOT NULL | `planned` \| `in_progress` \| `done` \| `dropped` |
+| status | TEXT NOT NULL | `planned` \| `in_progress` \| `done` \| `dropped` \| `moved` (reassigned to someone else) |
 | investigation_done | INTEGER NOT NULL DEFAULT 0 | boolean |
 | investigation_url | TEXT NULL | Confluence page |
 | outcome_notes | TEXT | how it went, how independent |
 | assigned_at | TEXT NOT NULL | |
 | completed_at | TEXT NULL | |
+| moved_from_id | INTEGER NULL → work_item | set on the new row created when a task is reassigned |
 | created_at, finalized_at, voided_at, void_reason | | |
 
-A re-rating is a new row (linked by the application), not an edit.
+A work item is the link between one task and one person: a ticket is never reused by someone else, so `external_ref` is unique among non-voided rows (partial unique index, when not NULL). Difficulty depends on the person (prior experience, business knowledge), so there is no task level; the stretch judgment is made once, at assignment, and is never changed after the row is locked. A wrongly entered item is voided and entered again.
+
+Unlike other journal rows, a locked work item stays partly editable, because its status, investigation fields, outcome notes and completion date change as the work progresses. Only the judgment columns are locked by trigger: `person_id`, `release_id`, `picked_by`, `stretch`, `stretch_rationale` and `assigned_at`. The trade-off is that status changes are not kept as a history; only `assigned_at` and `completed_at` are.
+
+Reassigning a task before it is done keeps the original row, sets its status to `moved`, and creates a new row for the new person with `moved_from_id` pointing at the original and its own stretch judgment. A `moved` item does not count towards the original person's release compliance.
 
 ## Derived (views, not stored)
 
 - `person_level_at(person_id, date)` and `current_level`.
-- `work_item_above_level`: complexity rank > the person's level rank at `assigned_at`, same track only.
-- `release_compliance`: per person and release, whether at least one non-dropped, non-voided task is above level.
+- `release_compliance`: per person and release, whether at least one task has `stretch = 'above'` and is not voided, `dropped` or `moved`.
 - `commitment_current`: latest `commitment_event` per commitment.
-- Metrics (finalized rows only): % of above-level tasks picked by `self` vs `lead`; % of tasks with `investigation_done`; count of entries tagged `documentation` per period; consecutive `no_progress` checks per person.
+- Metrics (finalized rows only): % of `above` tasks picked by `self` vs `lead`; % of tasks with `investigation_done`; count of entries tagged `documentation` per period; consecutive `no_progress` checks per person.
 
 ## Search
 
