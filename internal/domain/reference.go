@@ -7,9 +7,9 @@ import (
 
 // Problems reported by Level.Validate.
 var (
-	ErrTrackRequired = errors.New("track is required")
-	ErrCodeRequired  = errors.New("code is required")
-	ErrInvalidRank   = errors.New("rank must be positive")
+	ErrTrackRequired = invalid("track is required")
+	ErrCodeRequired  = invalid("code is required")
+	ErrInvalidRank   = invalid("rank must be positive")
 )
 
 // Validate returns every problem at once, joined.

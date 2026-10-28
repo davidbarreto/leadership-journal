@@ -2,8 +2,6 @@
 // It stays free of database, HTTP and logging code so it is trivial to test.
 package domain
 
-import "errors"
-
 // Track identifies a seniority scale; levels are only comparable within one.
 type Track string
 
@@ -15,7 +13,7 @@ const (
 )
 
 // ErrDifferentTrack is returned when comparing levels of different tracks.
-var ErrDifferentTrack = errors.New("levels belong to different tracks")
+var ErrDifferentTrack = invalid("levels belong to different tracks")
 
 // Level is one step of a seniority scale, e.g. E4 or EM2.
 type Level struct {

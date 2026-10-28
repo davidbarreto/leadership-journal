@@ -17,9 +17,9 @@ const (
 
 // Problems reported (joined) by Person.Validate.
 var (
-	ErrNameRequired        = errors.New("name is required")
-	ErrInvalidRelationship = errors.New("invalid relationship")
-	ErrTeamNotAllowed      = errors.New("only reports can belong to a team")
+	ErrNameRequired        = invalid("name is required")
+	ErrInvalidRelationship = invalid("invalid relationship")
+	ErrTeamNotAllowed      = invalid("only reports can belong to a team")
 )
 
 // Person is anyone the journal has entries about: a team member, the owner's

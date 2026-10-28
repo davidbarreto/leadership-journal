@@ -1,16 +1,15 @@
 package domain
 
 import (
-	"errors"
 	"time"
 )
 
 // Problems shared by several journal types.
 var (
-	ErrPersonRequired = errors.New("person is required")
-	ErrKindRequired   = errors.New("kind is required")
-	ErrKindMismatch   = errors.New("kind does not match its definition")
-	ErrInvalidPeriod  = errors.New("end date is before start date")
+	ErrPersonRequired = invalid("person is required")
+	ErrKindRequired   = invalid("kind is required")
+	ErrKindMismatch   = invalid("kind does not match its definition")
+	ErrInvalidPeriod  = invalid("end date is before start date")
 )
 
 // Lifecycle tracks where a journal row is in the draft, finalized, voided

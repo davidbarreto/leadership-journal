@@ -47,12 +47,12 @@ func (s CommitmentStatus) Valid() bool {
 
 // Problems reported by Commitment.Validate.
 var (
-	ErrContentRequired         = errors.New("content is required")
-	ErrInvalidCommitmentKind   = errors.New("kind must be task or learning")
-	ErrInvalidDirection        = errors.New("invalid direction")
-	ErrInvalidCommitmentStatus = errors.New("invalid commitment status")
-	ErrDeliverableRequired     = errors.New("a learning goal needs a deliverable (e.g. a demo or presentation)")
-	ErrDueDateRequired         = errors.New("a learning goal needs a due date")
+	ErrContentRequired         = invalid("content is required")
+	ErrInvalidCommitmentKind   = invalid("kind must be task or learning")
+	ErrInvalidDirection        = invalid("invalid direction")
+	ErrInvalidCommitmentStatus = invalid("invalid commitment status")
+	ErrDeliverableRequired     = invalid("a learning goal needs a deliverable (e.g. a demo or presentation)")
+	ErrDueDateRequired         = invalid("a learning goal needs a due date")
 )
 
 // Commitment is a promise, action item or learning goal tied to a person.
@@ -119,11 +119,11 @@ const (
 
 // Problems reported by Entry.Validate.
 var (
-	ErrBodyRequired       = errors.New("body is required")
-	ErrOutcomeRequired    = errors.New("this kind of entry needs an outcome")
-	ErrInvalidOutcome     = errors.New("outcome must be progress, no_progress or pending")
-	ErrOutcomeNotAllowed  = errors.New("this kind of entry does not take an outcome")
-	ErrOccurredAtRequired = errors.New("occurrence date is required")
+	ErrBodyRequired       = invalid("body is required")
+	ErrOutcomeRequired    = invalid("this kind of entry needs an outcome")
+	ErrInvalidOutcome     = invalid("outcome must be progress, no_progress or pending")
+	ErrOutcomeNotAllowed  = invalid("this kind of entry does not take an outcome")
+	ErrOccurredAtRequired = invalid("occurrence date is required")
 )
 
 // EntryKind classifies entries. Kinds are user-extensible; RequiresOutcome
@@ -184,7 +184,7 @@ func (e Entry) Validate(kind EntryKind) error {
 }
 
 // ErrStartsAtRequired is returned for a meeting without a start time.
-var ErrStartsAtRequired = errors.New("start time is required")
+var ErrStartsAtRequired = invalid("start time is required")
 
 // MeetingKind classifies meetings. RequiresPerson is the behavior flag: a 1:1
 // is always about one person, a team meeting is not.

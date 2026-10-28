@@ -42,13 +42,13 @@ const (
 
 // Problems reported by WorkItem.Validate.
 var (
-	ErrTitleRequired      = errors.New("title is required")
-	ErrReleaseRequired    = errors.New("release is required")
-	ErrInvalidPickedBy    = errors.New("picked by must be self or lead")
-	ErrInvalidStretch     = errors.New("stretch must be below, at or above")
-	ErrInvalidWorkStatus  = errors.New("invalid work status")
-	ErrRationaleRequired  = errors.New("stretch rationale is required")
-	ErrAssignedAtRequired = errors.New("assignment date is required")
+	ErrTitleRequired      = invalid("title is required")
+	ErrReleaseRequired    = invalid("release is required")
+	ErrInvalidPickedBy    = invalid("picked by must be self or lead")
+	ErrInvalidStretch     = invalid("stretch must be below, at or above")
+	ErrInvalidWorkStatus  = invalid("invalid work status")
+	ErrRationaleRequired  = invalid("stretch rationale is required")
+	ErrAssignedAtRequired = invalid("assignment date is required")
 )
 
 // WorkItem links one task to one person within a release. A ticket is never

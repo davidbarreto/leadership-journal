@@ -1,15 +1,14 @@
 package domain
 
 import (
-	"errors"
 	"time"
 )
 
 // Problems reported by LevelHistory.
 var (
-	ErrLevelAlreadyHeld  = errors.New("person already holds this level")
-	ErrRankNotIncreasing = errors.New("within a track, a later date must have a higher rank")
-	ErrNoLevel           = errors.New("person had no level on that date")
+	ErrLevelAlreadyHeld  = invalid("person already holds this level")
+	ErrRankNotIncreasing = invalid("within a track, a later date must have a higher rank")
+	ErrNoLevel           = invalid("person had no level on that date")
 )
 
 // LevelAssignment records that a person holds Level from EffectiveFrom on.
