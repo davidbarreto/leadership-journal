@@ -10,6 +10,10 @@ import (
 	"leadership-journal/internal/store"
 )
 
+// documentationTag marks notes that record a documentation contribution; the
+// count of finalized ones is one of the metrics of the process.
+const documentationTag = "documentation"
+
 func (s *Server) registerPeople(rt router) {
 	rt.protected("GET /people", s.peopleList)
 	rt.protected("GET /people/new", s.personNew)
@@ -207,6 +211,7 @@ type personPage struct {
 	Work        []workRow
 	Metrics     domain.WorkMetrics
 	Standings   []releaseStanding
+	DocCount    int
 	EntryForm   entryFormData
 	CommitForm  commitmentFormData
 	Back        string
@@ -302,6 +307,11 @@ func (s *Server) personShow(w http.ResponseWriter, r *http.Request) error {
 	if err := s.fillWork(ctx, &page, id); err != nil {
 		return err
 	}
+	docs, err := s.store.ListEntries(ctx, store.EntryFilter{PersonID: &id, Tag: documentationTag, FinalizedOnly: true})
+	if err != nil {
+		return err
+	}
+	page.DocCount = len(docs)
 	return s.render(w, r, http.StatusOK, "person", "people", page)
 }
 

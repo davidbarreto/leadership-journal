@@ -29,6 +29,8 @@ No notes in this period.
 No commitments in this period.
 {{end}}{{end}}{{if .Sections.Work}}
 ## Work
+
+Documentation contributions: {{.DocContributions}}.
 {{if .Work}}
 Stretch tasks counted: {{.Metrics.Above}}; picked by them: {{pct .Metrics.PctAboveSelf}}; assigned by their lead: {{pct .Metrics.PctAboveLead}}; tasks with an investigation first: {{pct .Metrics.PctInvestigated}}.
 {{range .Standings}}

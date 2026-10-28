@@ -52,6 +52,7 @@ type reportPage struct {
 	Work             []workRow
 	Metrics          domain.WorkMetrics
 	Standings        []releaseStanding
+	DocContributions int
 	Generated        time.Time
 	MarkdownLink     string
 }
@@ -218,6 +219,15 @@ func (s *Server) fillReport(ctx context.Context, page *reportPage, id int64, fro
 	}
 
 	if page.Sections.Work {
+		docs, err := s.store.ListEntries(ctx, store.EntryFilter{PersonID: &id, Tag: documentationTag, FinalizedOnly: true})
+		if err != nil {
+			return err
+		}
+		for _, d := range docs {
+			if inPeriod(d.OccurredAt, from, to) {
+				page.DocContributions++
+			}
+		}
 		items, err := s.store.ListWorkItems(ctx, store.WorkFilter{PersonID: &id})
 		if err != nil {
 			return err

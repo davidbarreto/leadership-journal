@@ -48,6 +48,23 @@
     <label class="check"><input type="checkbox" name="requires_outcome" value="1"> Is a progress check (needs an outcome)</label>
     <span><button>Add entry kind</button></span></div></form>
 
+<h2>Security and backup</h2>
+<form method="post" action="/settings/password" class="card">{{template "csrf" $}}<input type="hidden" name="back" value="/settings">
+  <h3>Change password</h3>
+  <label>Current password <input type="password" name="current" autocomplete="current-password" required></label>
+  <div class="row">
+    <label>New password (at least 12 characters) <input type="password" name="password" autocomplete="new-password" required></label>
+    <label>Repeat it <input type="password" name="confirm" autocomplete="new-password" required></label>
+  </div>
+  <button>Change password</button>
+  <p class="muted">Other browsers are logged out. There is no way to recover a forgotten password.</p>
+</form>
+<form method="post" action="/settings/backup" class="card">{{template "csrf" $}}<input type="hidden" name="back" value="/settings">
+  <h3>Back up the journal</h3>
+  <p class="muted">Writes a complete snapshot next to the database (safe while the app runs). It is as sensitive as the journal itself: keep it on an encrypted disk.</p>
+  <button class="secondary">Back up now</button>
+</form>
+
 <h2>Tags</h2>
 <p>{{range .Tags}}<span class="badge">{{.}}</span>{{else}}<span class="muted">None yet.</span>{{end}} <span class="muted">New tags are created when you use them on a note.</span></p>
 {{end}}{{end}}

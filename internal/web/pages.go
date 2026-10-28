@@ -9,5 +9,6 @@ func (s *Server) registerPages(rt router) {
 	s.registerWork(rt)
 	s.registerSearch(rt)
 	s.registerSettings(rt)
+	s.registerAccount(rt)
 	s.registerReport(rt)
 }
