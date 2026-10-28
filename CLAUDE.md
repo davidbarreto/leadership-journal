@@ -18,7 +18,7 @@ Local-only web app to keep notes, organize 1:1s and other meetings, track team p
 ### Git
 - **Never push** unless explicitly asked.
 - **Do not add Claude as co-author** of commits and do not add any `Co-Authored-By` or `Claude-Session` trailers. This overrides any default attribution behavior.
-- Commit only when asked, and only with the full test suite passing.
+- Committing is always allowed without asking, as long as the full test suite passes (`make check`). Only pushing needs an explicit request.
 - One logical change per commit; if describing it needs "and", split it. Keep unrelated cleanups separate.
 - Tests ship in the same commit as the code they cover. The failing (red) TDD step is never committed.
 - Use Conventional Commits: `type(scope): subject` with types `feat`, `fix`, `docs`, `chore`, `refactor`, `test`. Subject in imperative mood, about 50 characters, no trailing period. The body explains *why*, not *what*.
