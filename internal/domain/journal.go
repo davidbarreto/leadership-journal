@@ -36,6 +36,15 @@ const (
 	CommitmentDropped CommitmentStatus = "dropped"
 )
 
+// Valid reports whether s is one of the known statuses.
+func (s CommitmentStatus) Valid() bool {
+	switch s {
+	case CommitmentOpen, CommitmentDone, CommitmentMissed, CommitmentDropped:
+		return true
+	}
+	return false
+}
+
 // Problems reported by Commitment.Validate.
 var (
 	ErrContentRequired         = errors.New("content is required")
@@ -87,9 +96,7 @@ func (c Commitment) Validate() error {
 	if c.Direction != TheyOweMe && c.Direction != IOweThem {
 		errs = append(errs, ErrInvalidDirection)
 	}
-	switch c.Status {
-	case CommitmentOpen, CommitmentDone, CommitmentMissed, CommitmentDropped:
-	default:
+	if !c.Status.Valid() {
 		errs = append(errs, ErrInvalidCommitmentStatus)
 	}
 	return errors.Join(errs...)
