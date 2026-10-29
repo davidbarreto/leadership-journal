@@ -29,7 +29,7 @@ Flags win over environment variables, which win over defaults. Any address that 
 - **Notes** about a person (objectives, strengths, improvement points, feedback received and given, observations, progress checks) with tags, also between meetings.
 - **Commitments**: promises and action items in both directions, with an append-only status history. Learning goals must name a deliverable (a demo or presentation, not "I read it") and a due date.
 - **Improvement journal**: a progress check per person every 14 days by default (configurable with `-progress-days`). The dashboard flags overdue checks and `NO PROGRESS` streaks.
-- **Work**: releases and tasks per person. You record, at assignment, how much of a stretch the task is for that person (below, at or above), who picked it, and why. A release's name and dates can be edited. Each release shows who has a finalized stretch task. Tasks can be reassigned, keeping the original.
+- **Work**: releases and tasks per person. You record, at assignment, how much of a stretch the task is for that person (below, at or above), who picked it, and why. A release's name, dates and Markdown observations can be edited. Each release shows who has a finalized stretch task. Tasks can be reassigned, keeping the original.
 - **Metrics**: share of stretch tasks picked by the person vs assigned by you, share of tasks with an investigation first, and documentation contributions (finalized notes tagged `documentation`).
 - **Search** across notes, meeting notes and answers.
 - **Report for your manager**: finalized records only, of one report, filtered by period, section and kind of note, as a printable page or a Markdown download.

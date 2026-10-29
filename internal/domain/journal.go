@@ -248,6 +248,8 @@ type Release struct {
 	Name     string
 	StartsOn time.Time
 	EndsOn   time.Time
+	// Observations is the owner's free-form Markdown notes about the release.
+	Observations string
 }
 
 // Validate returns every problem at once, joined.

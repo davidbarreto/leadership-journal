@@ -103,7 +103,7 @@ func (s *Server) releaseFromForm(r *http.Request) (domain.Release, error) {
 	if starts.IsZero() || ends.IsZero() {
 		return domain.Release{}, userErrorf("Start and end dates are required")
 	}
-	return domain.Release{Name: formStr(r, "name"), StartsOn: starts, EndsOn: ends}, nil
+	return domain.Release{Name: formStr(r, "name"), StartsOn: starts, EndsOn: ends, Observations: formStr(r, "observations")}, nil
 }
 
 func (s *Server) releaseCreate(w http.ResponseWriter, r *http.Request) error {

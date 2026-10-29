@@ -1,0 +1,1 @@
+ALTER TABLE release ADD COLUMN observations TEXT NOT NULL DEFAULT '';

@@ -27,9 +27,11 @@
       <label>Starts <input type="date" name="starts_on" value="{{.StartsOn.Format "2006-01-02"}}" required></label>
       <label>Ends <input type="date" name="ends_on" value="{{.EndsOn.Format "2006-01-02"}}" required></label>
     </div>
+    <label>Observations (Markdown) <textarea name="observations" rows="5">{{.Observations}}</textarea></label>
     <button>Save release</button>
   </form>
 </details>
+{{if .Observations}}<div class="card">{{md .Observations}}</div>{{end}}
 <p class="muted">The process: everyone takes at least one task above their level in every release. Only finalized tasks count.</p>
 <table>
   <tr><th>Person</th><th>Standing</th><th>Tasks</th></tr>

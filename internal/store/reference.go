@@ -165,33 +165,33 @@ func (s *Store) CreateRelease(ctx context.Context, r domain.Release) (int64, err
 	if err := r.Validate(); err != nil {
 		return 0, err
 	}
-	res, err := s.db.ExecContext(ctx, `INSERT INTO release (name, starts_on, ends_on) VALUES (?, ?, ?)`,
-		strings.TrimSpace(r.Name), formatDate(r.StartsOn), formatDate(r.EndsOn))
+	res, err := s.db.ExecContext(ctx, `INSERT INTO release (name, starts_on, ends_on, observations) VALUES (?, ?, ?, ?)`,
+		strings.TrimSpace(r.Name), formatDate(r.StartsOn), formatDate(r.EndsOn), r.Observations)
 	if err != nil {
 		return 0, wrapErr(err)
 	}
 	return res.LastInsertId()
 }
 
-// UpdateRelease changes a release's name and period, or returns ErrNotFound.
+// UpdateRelease changes a release's name, period and observations, or returns ErrNotFound.
 func (s *Store) UpdateRelease(ctx context.Context, r domain.Release) error {
 	if err := r.Validate(); err != nil {
 		return err
 	}
-	res, err := s.db.ExecContext(ctx, `UPDATE release SET name = ?, starts_on = ?, ends_on = ? WHERE id = ?`,
-		strings.TrimSpace(r.Name), formatDate(r.StartsOn), formatDate(r.EndsOn), r.ID)
+	res, err := s.db.ExecContext(ctx, `UPDATE release SET name = ?, starts_on = ?, ends_on = ?, observations = ? WHERE id = ?`,
+		strings.TrimSpace(r.Name), formatDate(r.StartsOn), formatDate(r.EndsOn), r.Observations, r.ID)
 	if err != nil {
 		return wrapErr(err)
 	}
 	return requireAffected(res)
 }
 
-const releaseColumns = `id, name, starts_on, ends_on`
+const releaseColumns = `id, name, starts_on, ends_on, observations`
 
 func scanRelease(r interface{ Scan(...any) error }) (domain.Release, error) {
 	var rel domain.Release
 	var starts, ends string
-	if err := r.Scan(&rel.ID, &rel.Name, &starts, &ends); err != nil {
+	if err := r.Scan(&rel.ID, &rel.Name, &starts, &ends, &rel.Observations); err != nil {
 		return rel, err
 	}
 	var err error

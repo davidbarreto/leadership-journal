@@ -133,11 +133,11 @@ func TestUpdateRelease(t *testing.T) {
 	s := newTestStore(t)
 	id, _ := s.CreateRelease(ctx, domain.Release{Name: "R1", StartsOn: day(2024, 1, 1), EndsOn: day(2024, 3, 31)})
 
-	if err := s.UpdateRelease(ctx, domain.Release{ID: id, Name: " R1b ", StartsOn: day(2024, 2, 1), EndsOn: day(2024, 4, 30)}); err != nil {
+	if err := s.UpdateRelease(ctx, domain.Release{ID: id, Name: " R1b ", StartsOn: day(2024, 2, 1), EndsOn: day(2024, 4, 30), Observations: "Slipped a week"}); err != nil {
 		t.Fatal(err)
 	}
 	got, _ := s.GetRelease(ctx, id)
-	if got.Name != "R1b" || !got.StartsOn.Equal(day(2024, 2, 1)) || !got.EndsOn.Equal(day(2024, 4, 30)) {
+	if got.Name != "R1b" || got.Observations != "Slipped a week" || !got.StartsOn.Equal(day(2024, 2, 1)) || !got.EndsOn.Equal(day(2024, 4, 30)) {
 		t.Errorf("release = %+v", got)
 	}
 	if err := s.UpdateRelease(ctx, domain.Release{ID: id, Name: "X", StartsOn: day(2024, 5, 1), EndsOn: day(2024, 4, 1)}); !errors.Is(err, domain.ErrInvalidPeriod) {
