@@ -19,6 +19,17 @@
 
 {{with .Selected}}
 <h2>{{.Name}} <span class="muted">{{date .StartsOn}} – {{date .EndsOn}}</span></h2>
+<details class="noprint"><summary>Edit release</summary>
+  <form method="post" action="/releases/{{.ID}}" class="card">
+    {{template "csrf" $}}<input type="hidden" name="back" value="/work?release={{.ID}}">
+    <div class="row">
+      <label>Name <input type="text" name="name" value="{{.Name}}" required></label>
+      <label>Starts <input type="date" name="starts_on" value="{{.StartsOn.Format "2006-01-02"}}" required></label>
+      <label>Ends <input type="date" name="ends_on" value="{{.EndsOn.Format "2006-01-02"}}" required></label>
+    </div>
+    <button>Save release</button>
+  </form>
+</details>
 <p class="muted">The process: everyone takes at least one task above their level in every release. Only finalized tasks count.</p>
 <table>
   <tr><th>Person</th><th>Standing</th><th>Tasks</th></tr>

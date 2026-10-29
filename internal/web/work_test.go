@@ -200,3 +200,23 @@ func TestWork_UnknownItemIs404(t *testing.T) {
 	mustStatus(t, c.get("/work/xyz"), http.StatusNotFound)
 	mustStatus(t, c.get("/work?release=999"), http.StatusNotFound)
 }
+
+func TestWork_ReleaseUpdate(t *testing.T) {
+	env := newEnv(t)
+	c := env.loggedIn()
+	c.post("/releases", url.Values{"name": {"R1"}, "starts_on": {"2024-01-01"}, "ends_on": {"2024-03-31"}})
+
+	mustContain(t, c.get("/work?release=1"), "Edit release")
+	rec := c.post("/releases/1", url.Values{"name": {"R1 renamed"}, "starts_on": {"2024-02-01"}, "ends_on": {"2024-04-30"}})
+	mustStatus(t, rec, http.StatusSeeOther)
+	got, _ := env.st.GetRelease(ctx(), 1)
+	if got.Name != "R1 renamed" || got.StartsOn.Format("2006-01-02") != "2024-02-01" {
+		t.Errorf("release = %+v", got)
+	}
+
+	c.post("/releases/1", url.Values{"name": {"R1"}, "starts_on": {"2024-05-01"}, "ends_on": {"2024-04-01"}, "back": {"/work?release=1"}})
+	if got, _ = env.st.GetRelease(ctx(), 1); got.Name != "R1 renamed" {
+		t.Errorf("invalid edit was applied: %+v", got)
+	}
+	mustStatus(t, c.post("/releases/99", url.Values{"name": {"X"}, "starts_on": {"2024-01-01"}, "ends_on": {"2024-02-01"}}), http.StatusNotFound)
+}

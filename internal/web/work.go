@@ -13,6 +13,7 @@ import (
 func (s *Server) registerWork(rt router) {
 	rt.protected("GET /work", s.workBoard)
 	rt.protected("POST /releases", s.releaseCreate)
+	rt.protected("POST /releases/{id}", s.releaseUpdate)
 	rt.protected("POST /work", s.workCreate)
 	rt.protected("GET /work/{id}", s.workShow)
 	rt.protected("POST /work/{id}", s.workUpdate)
@@ -89,23 +90,49 @@ func (s *Server) workBoard(w http.ResponseWriter, r *http.Request) error {
 	return s.render(w, r, http.StatusOK, "work", "work", page)
 }
 
-func (s *Server) releaseCreate(w http.ResponseWriter, r *http.Request) error {
+// releaseFromForm reads the name and period shared by release create and update.
+func (s *Server) releaseFromForm(r *http.Request) (domain.Release, error) {
 	starts, err := s.formDate(r, "starts_on")
 	if err != nil {
-		return err
+		return domain.Release{}, err
 	}
 	ends, err := s.formDate(r, "ends_on")
 	if err != nil {
-		return err
+		return domain.Release{}, err
 	}
 	if starts.IsZero() || ends.IsZero() {
-		return userErrorf("Start and end dates are required")
+		return domain.Release{}, userErrorf("Start and end dates are required")
 	}
-	id, err := s.store.CreateRelease(r.Context(), domain.Release{Name: formStr(r, "name"), StartsOn: starts, EndsOn: ends})
+	return domain.Release{Name: formStr(r, "name"), StartsOn: starts, EndsOn: ends}, nil
+}
+
+func (s *Server) releaseCreate(w http.ResponseWriter, r *http.Request) error {
+	rel, err := s.releaseFromForm(r)
+	if err != nil {
+		return err
+	}
+	id, err := s.store.CreateRelease(r.Context(), rel)
 	if err != nil {
 		return err
 	}
 	return s.redirect(w, r, fmt.Sprintf("/work?release=%d", id), "Release added.")
+}
+
+func (s *Server) releaseUpdate(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r)
+	if err != nil {
+		return err
+	}
+	rel, err := s.releaseFromForm(r)
+	if err != nil {
+		return err
+	}
+	rel.ID = id
+	if err := s.store.UpdateRelease(r.Context(), rel); err != nil {
+		return err
+	}
+	s.log.Info("release updated", "release_id", id, "request_id", requestID(r.Context()))
+	return s.redirect(w, r, fmt.Sprintf("/work?release=%d", id), "Release saved.")
 }
 
 // workItemFromForm reads the judgment fields shared by create, update and move.

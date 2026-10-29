@@ -173,6 +173,19 @@ func (s *Store) CreateRelease(ctx context.Context, r domain.Release) (int64, err
 	return res.LastInsertId()
 }
 
+// UpdateRelease changes a release's name and period, or returns ErrNotFound.
+func (s *Store) UpdateRelease(ctx context.Context, r domain.Release) error {
+	if err := r.Validate(); err != nil {
+		return err
+	}
+	res, err := s.db.ExecContext(ctx, `UPDATE release SET name = ?, starts_on = ?, ends_on = ? WHERE id = ?`,
+		strings.TrimSpace(r.Name), formatDate(r.StartsOn), formatDate(r.EndsOn), r.ID)
+	if err != nil {
+		return wrapErr(err)
+	}
+	return requireAffected(res)
+}
+
 const releaseColumns = `id, name, starts_on, ends_on`
 
 func scanRelease(r interface{ Scan(...any) error }) (domain.Release, error) {
