@@ -148,7 +148,7 @@ func TestMeeting_FullLifecycle(t *testing.T) {
 
 	page := c.get(url1)
 	mustStatus(t, page, http.StatusOK)
-	mustContain(t, page, "Draft", "What did you learn in the last 2 weeks?", "How did you apply it?",
+	mustContain(t, page, "Draft", "What did you learn since the last progress check?", "How did you apply it?",
 		`<textarea name="notes"`, "Finalize meeting", "Ana")
 
 	rec := c.post(url1, url.Values{

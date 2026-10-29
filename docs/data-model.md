@@ -102,7 +102,7 @@ Minutes template per meeting kind.
 
 Seed:
 
-- `one_on_one`: `learned` (What did you learn in the last 2 weeks?), `applied` (How did you apply it?), `blockers`, `feedback`
+- `one_on_one`: `learned` (What did you learn since the last progress check?), `applied` (How did you apply it?), `blockers`, `feedback`
 - `team`: `agenda`, `discussion`, `decisions`
 - `standup`: `yesterday`, `today`, `blockers`
 
@@ -174,7 +174,7 @@ The core journal item. Always about one person; optionally tied to a meeting.
 | corrects_entry_id | INTEGER NULL → entry | |
 | created_at, finalized_at, voided_at, void_reason | | |
 
-The bi-weekly improvement journal is the 1:1's `learned`/`applied` answers plus a `progress_check` entry with its outcome. `NO PROGRESS` is `outcome = 'no_progress'`. A person is overdue when their last finalized `progress_check` is older than 2 weeks.
+The bi-weekly improvement journal is the 1:1's `learned`/`applied` answers plus a `progress_check` entry with its outcome. `NO PROGRESS` is `outcome = 'no_progress'`. A person is overdue when their last finalized `progress_check` is older than the configured interval (14 days by default).
 
 ### commitment
 Covers promises, action items and learning goals.

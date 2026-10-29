@@ -91,6 +91,9 @@ func TestOpen_AppliesMigrationsAndSeeds(t *testing.T) {
 	if got := count(t, s, `SELECT COUNT(*) FROM meeting_prompt WHERE meeting_kind = 'one_on_one' AND prompt_key IN ('learned', 'applied')`); got != 2 {
 		t.Errorf("1:1 prompts learned/applied missing")
 	}
+	if got := count(t, s, `SELECT COUNT(*) FROM meeting_prompt WHERE prompt_text LIKE '%weeks%'`); got != 0 {
+		t.Errorf("prompts must not hardcode the configurable progress interval")
+	}
 }
 
 func TestOpen_IsIdempotentAndRestrictsFilePermissions(t *testing.T) {
