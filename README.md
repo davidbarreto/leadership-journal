@@ -10,7 +10,7 @@ Requirements: Go 1.23 or newer. No Docker, no other tooling.
 make run
 ```
 
-Open the address it prints (`http://127.0.0.1:8080` by default). The first time, you choose the password that protects the journal. It cannot be recovered, so keep it somewhere safe.
+Open the address it prints (`http://127.0.0.1:8080` by default). The first time, you choose the password that protects the journal. It cannot be recovered, but it can be reset (see below).
 
 | Setting | Flag | Environment variable | Default |
 |---|---|---|---|
@@ -21,6 +21,10 @@ Open the address it prints (`http://127.0.0.1:8080` by default). The first time,
 | Days allowed between progress checks | `-progress-days` | `JOURNAL_PROGRESS_DAYS` | `14` |
 
 Flags win over environment variables, which win over defaults. Any address that is not `127.0.0.1`, `localhost` or `::1` is refused at startup. Use a different `-data-dir` for a scratch instance with fake data.
+
+### Forgot the password?
+
+Stop the journal, then run `go run ./cmd/journal reset-password` (add `-data-dir` if you use a custom one). It removes the stored password hash and ends every session; your journal data is untouched. Start the journal again and the first-run page asks for a new password. This needs access to the database file, which is the same trust boundary as the data itself.
 
 ## What it does
 
@@ -110,4 +114,3 @@ Versions are pinned to ones that build with Go 1.23. When adding or upgrading a 
 - Corrections of locked notes from the UI (the store supports a note that corrects another).
 - Archiving or renaming kinds, levels, prompts and tags from the settings page; `started on` / `left on` dates for people; attendees of team meetings.
 - Importing from Jira or Confluence: they are only reachable from the client's VDI, so tasks and investigation links are entered by hand.
-- A command-line way to reset a forgotten password.

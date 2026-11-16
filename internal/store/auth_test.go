@@ -99,3 +99,37 @@ func TestDeleteOtherSessions(t *testing.T) {
 		}
 	}
 }
+
+func TestResetOwner_RemovesPasswordAndSessions(t *testing.T) {
+	s := newTestStore(t)
+	if err := s.CreateUser(ctx, "hash-1"); err != nil {
+		t.Fatal(err)
+	}
+	expires := testClock().Add(time.Hour)
+	if err := s.CreateSession(ctx, "sess-a", "csrf", expires); err != nil {
+		t.Fatal(err)
+	}
+
+	had, err := s.ResetOwner(ctx)
+	if err != nil || !had {
+		t.Fatalf("ResetOwner = %v, %v; want true, nil", had, err)
+	}
+	if has, _ := s.HasUser(ctx); has {
+		t.Error("the owner still exists after the reset")
+	}
+	if _, err := s.GetSession(ctx, "sess-a", testClock()); !errors.Is(err, ErrNotFound) {
+		t.Errorf("session survived the reset: %v", err)
+	}
+	// The setup page can now choose a new password.
+	if err := s.CreateUser(ctx, "hash-2"); err != nil {
+		t.Errorf("CreateUser after reset: %v", err)
+	}
+}
+
+func TestResetOwner_WithoutUser(t *testing.T) {
+	s := newTestStore(t)
+	had, err := s.ResetOwner(ctx)
+	if err != nil || had {
+		t.Errorf("ResetOwner on a fresh database = %v, %v; want false, nil", had, err)
+	}
+}

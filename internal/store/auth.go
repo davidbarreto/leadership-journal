@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
@@ -34,6 +35,27 @@ func (s *Store) PasswordHash(ctx context.Context) (string, error) {
 	var h string
 	err := s.db.QueryRowContext(ctx, `SELECT password_hash FROM app_user WHERE id = 1`).Scan(&h)
 	return h, wrapErr(err)
+}
+
+// ResetOwner removes the owner's password and every session, so the setup page
+// lets the owner choose a new password. It reports whether an owner existed.
+// Journal data is untouched: the password only gates access to the app.
+func (s *Store) ResetOwner(ctx context.Context) (bool, error) {
+	var had bool
+	err := s.withTx(ctx, func(tx *sql.Tx) error {
+		res, err := tx.ExecContext(ctx, `DELETE FROM app_user`)
+		if err != nil {
+			return err
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		had = n > 0
+		_, err = tx.ExecContext(ctx, `DELETE FROM session`)
+		return err
+	})
+	return had, err
 }
 
 // Session is a logged-in browser session.

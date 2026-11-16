@@ -12,6 +12,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"leadership-journal/internal/store"
 )
 
 // syncBuffer lets the test read what run prints while run is still going.
@@ -132,5 +134,49 @@ func TestRun_ReportsBadFlags(t *testing.T) {
 	err := run(context.Background(), []string{"-nope"}, env(map[string]string{"HOME": "/h"}), io.Discard)
 	if err == nil {
 		t.Error("an unknown flag must be an error")
+	}
+}
+
+func TestResetPassword_ClearsThePasswordSoSetupRunsAgain(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "data")
+	args := []string{"reset-password", "-data-dir", dir, "-log-level", "error"}
+	getenv := env(map[string]string{"HOME": t.TempDir()})
+
+	// No journal yet: refuse instead of creating an empty database.
+	if err := run(context.Background(), args, getenv, io.Discard); err == nil {
+		t.Fatal("reset-password on a missing data directory succeeded, want an error")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "journal.db")); err == nil {
+		t.Fatal("reset-password created a database")
+	}
+
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now
+	st, err := store.Open(filepath.Join(dir, "journal.db"), now)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	if err := st.CreateUser(context.Background(), "hash"); err != nil {
+		t.Fatal(err)
+	}
+	st.Close()
+
+	out := &syncBuffer{}
+	if err := run(context.Background(), args, getenv, out); err != nil {
+		t.Fatalf("reset-password: %v", err)
+	}
+	if !strings.Contains(out.String(), "choose a new password") {
+		t.Errorf("output %q does not tell the user what to do next", out.String())
+	}
+
+	st, err = store.Open(filepath.Join(dir, "journal.db"), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	if has, _ := st.HasUser(context.Background()); has {
+		t.Error("the owner still exists after reset-password")
 	}
 }

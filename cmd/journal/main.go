@@ -20,7 +20,10 @@ import (
 	"leadership-journal/internal/web"
 )
 
-const shutdownTimeout = 10 * time.Second
+const (
+	shutdownTimeout  = 10 * time.Second
+	resetPasswordCmd = "reset-password"
+)
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -35,6 +38,9 @@ func main() {
 // run starts the server and blocks until ctx is cancelled, then shuts down
 // gracefully. It prints the address to stdout once it is listening.
 func run(ctx context.Context, args []string, getenv func(string) string, stdout io.Writer) error {
+	if len(args) > 0 && args[0] == resetPasswordCmd {
+		return resetPassword(args[1:], getenv, stdout)
+	}
 	cfg, err := config.Load(args, getenv)
 	if err != nil {
 		return err
@@ -96,5 +102,37 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout 
 	if err := httpServer.Shutdown(shutdownCtx); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("shutdown: %w", err)
 	}
+	return nil
+}
+
+// resetPassword clears the owner's password and sessions for a forgotten
+// password. It takes the same flags as the server (for -data-dir) and never
+// reads or prints a password: the next visit to the app shows the setup page.
+func resetPassword(args []string, getenv func(string) string, stdout io.Writer) error {
+	cfg, err := config.Load(args, getenv)
+	if err != nil {
+		return err
+	}
+	// Refuse to create an empty journal when the data directory is wrong.
+	if _, err := os.Stat(cfg.DBPath()); err != nil {
+		return fmt.Errorf("no journal found at %s: check -data-dir", cfg.DBPath())
+	}
+	st, err := store.Open(cfg.DBPath(), time.Now)
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+
+	had, err := st.ResetOwner(context.Background())
+	if err != nil {
+		return fmt.Errorf("reset password: %w", err)
+	}
+	slog.Info("password reset", "data_dir", cfg.DataDir, "had_password", had)
+	if !had {
+		fmt.Fprintln(stdout, "No password was set; nothing to reset. Start the journal to choose one.")
+		return nil
+	}
+	fmt.Fprintln(stdout, "Password removed and all sessions ended. Your journal data is untouched.")
+	fmt.Fprintln(stdout, "Start the journal and open it in the browser to choose a new password.")
 	return nil
 }
