@@ -24,7 +24,7 @@ Flags win over environment variables, which win over defaults. Any address that 
 
 ### Forgot the password?
 
-Stop the journal, then run `go run ./cmd/journal reset-password` (add `-data-dir` if you use a custom one). It removes the stored password hash and ends every session; your journal data is untouched. Start the journal again and the first-run page asks for a new password. This needs access to the database file, which is the same trust boundary as the data itself.
+Stop the journal, then run `make reset-password` (set `JOURNAL_DATA_DIR` if you use a custom data directory; `./bin/journal reset-password -data-dir <dir>` also works). It removes the stored password hash and ends every session; your journal data is untouched. Start the journal again and the first-run page asks for a new password. This needs access to the database file, which is the same trust boundary as the data itself.
 
 ## What it does
 
@@ -92,6 +92,7 @@ make test    # tests only
 make cover   # tests with coverage
 make fmt     # gofmt -w
 make build   # bin/journal
+make reset-password   # clears a forgotten password (see Quick start)
 ```
 
 Practices (details in `CLAUDE.md`): tests first, a failing regression test before every bug fix, no duplicated logic, explanatory comments only where the reason is not obvious, structured logs for tracing, standard library first.

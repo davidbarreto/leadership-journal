@@ -1,4 +1,4 @@
-.PHONY: test cover vet fmt check build run
+.PHONY: test cover vet fmt check build run reset-password
 
 test:
 	go test ./...
@@ -23,3 +23,7 @@ build:
 
 run: build
 	./bin/journal
+
+# Clears a forgotten password. Honors JOURNAL_DATA_DIR like `make run`.
+reset-password: build
+	./bin/journal reset-password
