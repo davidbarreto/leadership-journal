@@ -88,7 +88,7 @@ func TestWork_ItemLifecycleAndCompliance(t *testing.T) {
 	mustContain(t, page, "Worked independently", "20 Feb 2024", `badge ok">Done</span>`)
 
 	// Ana's profile now shows the metrics derived from it.
-	profile := c.get("/people/" + id(ana))
+	profile := c.get("/people/" + id(ana) + "?tab=work")
 	mustContain(t, profile, "Migrate billing job", "100%", compliantBadge)
 }
 

@@ -4,57 +4,81 @@
 <p class="muted">
   {{.Person.RoleTitle}}{{if .TeamName}} · {{.TeamName}}{{end}} · {{human (print .Person.Relationship)}}{{if .Level}} · Level {{.Level}}{{end}}
 </p>
+{{with .Progress}}
+<p>
+  {{if .LastCheck}}Last progress check: {{datePtr .LastCheck}}{{else}}No progress check yet.{{end}}
+  {{if .Overdue}}<span class="badge warn">Overdue: due every {{.IntervalDays}} days</span>{{end}}
+  {{if ge .NoProgressStreak 2}}<span class="badge bad">NO PROGRESS ×{{.NoProgressStreak}} in a row</span>{{end}}
+</p>
+{{end}}
 <p class="noprint">
   <a href="/people/{{.Person.ID}}/edit">Edit</a>
   {{if eq .Person.Relationship "report"}} · <a href="/people/{{.Person.ID}}/report">Report for your manager</a>{{end}}
 </p>
 
-{{with .Progress}}
-<section class="card">
-  <h3>Improvement journal</h3>
-  <p>
-    {{if .LastCheck}}Last progress check: {{datePtr .LastCheck}}{{else}}No progress check yet.{{end}}
-    {{if .Overdue}}<span class="badge warn">Overdue: due every {{.IntervalDays}} days</span>{{end}}
-    {{if ge .NoProgressStreak 2}}<span class="badge bad">NO PROGRESS ×{{.NoProgressStreak}} in a row</span>{{end}}
-  </p>
-</section>
+<nav class="tabs noprint" aria-label="Sections">
+  {{range .Tabs}}<a href="{{if eq .Code "overview"}}/people/{{$.Data.Person.ID}}{{else}}/people/{{$.Data.Person.ID}}?tab={{.Code}}{{end}}"{{if eq .Code $.Data.Tab}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}
+</nav>
+
+{{if eq .Tab "overview"}}{{with .Overview}}
+<div class="grid">
+  <section class="card">
+    <h3><a href="/people/{{$.Data.Person.ID}}?tab=commitments">Open commitments</a></h3>
+    {{range .OpenCommitments}}
+    <p>{{.C.Content}}
+      <span class="muted">· {{if eq .C.Direction "they_owe_me"}}they owe you{{else}}you owe them{{end}}{{with .C.DueOn}} · due {{datePtr .}}{{end}}</span>
+      {{if .Overdue}}<span class="badge bad">Overdue</span>{{end}}{{if .C.IsDraft}}<span class="badge">Draft</span>{{end}}
+    </p>
+    {{else}}<p class="muted">Nothing open.</p>{{end}}
+    {{with .MoreCommitments}}<p><a href="/people/{{$.Data.Person.ID}}?tab=commitments">{{.}} more…</a></p>{{end}}
+  </section>
+  <section class="card">
+    <h3><a href="/people/{{$.Data.Person.ID}}?tab=meetings">Last meeting</a></h3>
+    {{with .LastMeeting}}
+    <p><a href="/meetings/{{.Meeting.ID}}">{{.KindLabel}}{{if .Meeting.Title}}: {{.Meeting.Title}}{{end}}</a><br>
+      <span class="muted">{{datetime .Meeting.StartsAt}}</span> {{template "lifecycleBadge" .Meeting}}</p>
+    {{else}}<p class="muted">No meetings yet.</p>{{end}}
+  </section>
+  {{with .Standing}}
+  <section class="card">
+    <h3><a href="/people/{{$.Data.Person.ID}}?tab=work">{{.Release.Name}}</a></h3>
+    <p>{{template "complianceBadge" .Compliant}}</p>
+    <p class="muted">{{.Items}} task{{if ne .Items 1}}s{{end}} in this release.</p>
+  </section>
+  {{end}}
+</div>
+<h2><a href="/people/{{$.Data.Person.ID}}?tab=notes">Latest notes</a></h2>
+{{range .LatestNotes}}{{template "entry" .}}{{else}}<p class="muted">Nothing noted yet.</p>{{end}}
+{{end}}{{end}}
+
+{{if eq .Tab "notes"}}
+<details class="noprint"{{if .AddOpen}} open{{end}}><summary>Add a note</summary>
+  {{template "entryForm" .EntryForm}}
+</details>
+{{range .Entries}}{{template "entry" .}}{{else}}<p class="muted">Nothing noted yet.</p>{{end}}
 {{end}}
 
-<h2>Level</h2>
-{{if .History}}
-<table>
-  <tr><th>Level</th><th>Title</th><th>From</th></tr>
-  {{range .History}}<tr><td>{{.Code}}</td><td>{{.Title}}</td><td>{{date .From}}</td></tr>{{end}}
-</table>
-{{else}}<p class="muted">No level recorded yet.</p>{{end}}
-<form method="post" action="/people/{{.Person.ID}}/level" class="noprint">
-  {{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}">
-  <div class="row">
-    <select name="level_id">{{range .Levels}}<option value="{{.ID}}">{{.Code}} · {{.Title}}</option>{{end}}</select>
-    <input type="date" name="effective_from" required>
-    <span><button class="secondary">Record level</button></span>
-  </div>
-</form>
-
-<h2>Notes</h2>
-{{template "entryForm" .EntryForm}}
-{{range .Entries}}{{template "entry" .}}{{else}}<p class="muted">Nothing noted yet.</p>{{end}}
-
-<h2>Commitments</h2>
-{{template "commitmentForm" .CommitForm}}
+{{if eq .Tab "commitments"}}
+<details class="noprint"{{if .AddOpen}} open{{end}}><summary>Add a commitment</summary>
+  {{template "commitmentForm" .CommitForm}}
+</details>
 {{range .Commitments}}{{template "commitment" .}}{{else}}<p class="muted">No commitments yet.</p>{{end}}
+{{end}}
 
-<h2>Meetings</h2>
+{{if eq .Tab "meetings"}}
 {{if .Meetings}}
 <table>
+  <tr><th>When</th><th>Meeting</th><th></th></tr>
   {{range .Meetings}}<tr>
+    <td>{{datetime .Meeting.StartsAt}}</td>
     <td><a href="/meetings/{{.Meeting.ID}}">{{.KindLabel}}{{if .Meeting.Title}}: {{.Meeting.Title}}{{end}}</a></td>
-    <td>{{datetime .Meeting.StartsAt}}</td><td>{{template "lifecycleBadge" .Meeting}}</td>
+    <td>{{template "lifecycleBadge" .Meeting}}</td>
   </tr>{{end}}
 </table>
 {{else}}<p class="muted">No meetings yet.</p>{{end}}
+{{end}}
 
-<h2>Work</h2>
+{{if eq .Tab "work"}}
 <p>Documentation contributions: {{.DocCount}} <span class="muted">(finalized notes tagged "documentation")</span></p>
 {{if .Work}}
 <div class="grid">
@@ -73,4 +97,24 @@
   </tr>{{end}}
 </table>
 {{else}}<p class="muted">No tasks yet. <a href="/work">Add one from the Work page.</a></p>{{end}}
+{{end}}
+
+{{if eq .Tab "level"}}
+<details class="noprint"{{if .AddOpen}} open{{end}}><summary>Record a level</summary>
+<form method="post" action="/people/{{.Person.ID}}/level" class="card">
+  {{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}">
+  <div class="row">
+    <label>Level <select name="level_id">{{range .Levels}}<option value="{{.ID}}">{{.Code}} · {{.Title}}</option>{{end}}</select></label>
+    <label>From <input type="date" name="effective_from" required></label>
+  </div>
+  <button>Record level</button>
+</form>
+</details>
+{{if .History}}
+<table>
+  <tr><th>Level</th><th>Title</th><th>From</th></tr>
+  {{range .History}}<tr><td>{{.Code}}</td><td>{{.Title}}</td><td>{{date .From}}</td></tr>{{end}}
+</table>
+{{else}}<p class="muted">No level recorded yet.</p>{{end}}
+{{end}}
 {{end}}{{end}}

@@ -149,7 +149,7 @@ func TestSettings_ExtendTheJournalWithoutCode(t *testing.T) {
 	// A new entry kind shows up in the note forms.
 	pid := c.createPerson(t, "Ana", "report")
 	c.post("/settings/entry-kinds", url.Values{"label": {"Kudos"}})
-	mustContain(t, c.get("/people/"+id(pid)), `<option value="kudos">Kudos</option>`)
+	mustContain(t, c.get("/people/"+id(pid)+"?tab=notes"), `<option value="kudos">Kudos</option>`)
 
 	// A new prompt shows up in the minutes of that meeting kind.
 	c.post("/settings/prompts", url.Values{"meeting_kind": {"one_on_one"}, "text": {"How is your workload?"}})
@@ -158,7 +158,7 @@ func TestSettings_ExtendTheJournalWithoutCode(t *testing.T) {
 
 	// A new level (e.g. the QA scale) is available for people.
 	c.post("/settings/levels", url.Values{"track": {"qa"}, "code": {"QA1"}, "title": {"Junior QA"}, "rank": {"10"}})
-	mustContain(t, c.get("/people/"+id(pid)), "QA1")
+	mustContain(t, c.get("/people/"+id(pid)+"?tab=level"), "QA1")
 	c.post("/settings/levels", url.Values{"track": {"qa"}, "code": {"QA2"}, "title": {""}, "rank": {"20"}, "back": {"/settings"}})
 	mustContain(t, c.get("/settings"), "Title is required")
 	c.post("/settings/levels", url.Values{"track": {"qa"}, "code": {"QA3"}, "title": {"x"}, "rank": {"abc"}, "back": {"/settings"}})

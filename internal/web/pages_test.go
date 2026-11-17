@@ -123,19 +123,22 @@ func TestPeople_LevelHistoryFollowsTheRules(t *testing.T) {
 	for _, l := range levels {
 		byCode[l.Code] = id(l.ID)
 	}
-	back := "/people/" + id(pid)
+	back := "/people/" + id(pid) + "?tab=level"
 
 	for _, step := range []struct{ code, from string }{{"E3", "2022-01-01"}, {"E5", "2024-01-01"}} {
-		rec := c.post(back+"/level", url.Values{"level_id": {byCode[step.code]}, "effective_from": {step.from}})
+		rec := c.post("/people/"+id(pid)+"/level", url.Values{"level_id": {byCode[step.code]}, "effective_from": {step.from}})
+		if location(rec) != back {
+			t.Fatalf("redirect = %q, want the level tab %q", location(rec), back)
+		}
 		mustStatus(t, rec, http.StatusSeeOther)
 	}
 	page := c.get(back)
 	mustContain(t, page, "E5", "E3", "1 Jan 2022", "1 Jan 2024")
 
-	c.post(back+"/level", url.Values{"level_id": {byCode["E4"]}, "effective_from": {"2025-01-01"}, "back": {back}})
+	c.post("/people/"+id(pid)+"/level", url.Values{"level_id": {byCode["E4"]}, "effective_from": {"2025-01-01"}, "back": {back}})
 	mustContain(t, c.get(back), "higher rank")
 
-	c.post(back+"/level", url.Values{"level_id": {byCode["E4"]}, "effective_from": {"not a date"}, "back": {back}})
+	c.post("/people/"+id(pid)+"/level", url.Values{"level_id": {byCode["E4"]}, "effective_from": {"not a date"}, "back": {back}})
 	mustContain(t, c.get(back), "date")
 }
 
@@ -250,7 +253,7 @@ func TestMeeting_NotesAreSanitizedWhenShown(t *testing.T) {
 func TestEntries_StandaloneLifecycle(t *testing.T) {
 	c := newEnv(t).loggedIn()
 	pid := c.createPerson(t, "Ana", "report")
-	back := "/people/" + id(pid)
+	back := "/people/" + id(pid) + "?tab=notes"
 
 	rec := c.post("/entries", url.Values{
 		"person_id": {id(pid)}, "kind": {"strength"}, "body": {"Great at **mentoring**"}, "tags": {"communication"},
@@ -306,7 +309,7 @@ func TestEntries_StandaloneLifecycle(t *testing.T) {
 func TestEntries_OutcomeRulesFollowTheKind(t *testing.T) {
 	c := newEnv(t).loggedIn()
 	pid := c.createPerson(t, "Ana", "report")
-	back := "/people/" + id(pid)
+	back := "/people/" + id(pid) + "?tab=notes"
 
 	c.post("/entries", url.Values{"person_id": {id(pid)}, "kind": {"progress_check"}, "body": {"Applied Go in the billing job"}, "back": {back}})
 	mustContain(t, c.get(back), "needs an outcome")
@@ -325,7 +328,7 @@ func TestEntries_OutcomeRulesFollowTheKind(t *testing.T) {
 func TestCommitments_StatusFlow(t *testing.T) {
 	c := newEnv(t).loggedIn()
 	pid := c.createPerson(t, "Ana", "report")
-	back := "/people/" + id(pid)
+	back := "/people/" + id(pid) + "?tab=commitments"
 
 	// A learning goal must name what will be shown.
 	c.post("/commitments", url.Values{

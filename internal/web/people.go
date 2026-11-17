@@ -178,7 +178,7 @@ func (s *Server) personLevel(w http.ResponseWriter, r *http.Request) error {
 	if err := s.store.AssignLevel(r.Context(), id, levelID, from); err != nil {
 		return err
 	}
-	return s.done(w, r, fmt.Sprintf("/people/%d", id), "Level recorded.")
+	return s.done(w, r, personTabURL(id, "level"), "Level recorded.")
 }
 
 type levelRow struct {
@@ -198,24 +198,84 @@ type workRow struct {
 	PersonName  string
 }
 
+// personTab is one tab of the person page.
+type personTab struct {
+	Code, Label string
+}
+
+// personTabs are the person page's tabs in display order; the first is the
+// default.
+var personTabs = []personTab{
+	{"overview", "Overview"},
+	{"notes", "Notes"},
+	{"commitments", "Commitments"},
+	{"meetings", "Meetings"},
+	{"work", "Work"},
+	{"level", "Level"},
+}
+
+// personTabFrom picks the requested tab, falling back to the overview for an
+// unknown or missing one.
+func personTabFrom(r *http.Request) string {
+	want := r.URL.Query().Get("tab")
+	for _, t := range personTabs {
+		if t.Code == want {
+			return want
+		}
+	}
+	return personTabs[0].Code
+}
+
+// personTabURL is where a tab lives, and where actions posted from it return.
+func personTabURL(personID int64, tab string) string {
+	if tab == personTabs[0].Code {
+		return fmt.Sprintf("/people/%d", personID)
+	}
+	return fmt.Sprintf("/people/%d?tab=%s", personID, tab)
+}
+
+// overviewLimits keep the overview short; the tabs hold the full lists.
+const (
+	overviewCommitments = 5
+	overviewNotes       = 3
+)
+
+// personOverview is the summary shown on the first tab.
+type personOverview struct {
+	OpenCommitments []commitmentView
+	MoreCommitments int
+	LatestNotes     []entryView
+	LastMeeting     *meetingRow
+	Release         *domain.Release
+	Standing        *releaseStanding
+}
+
+// personPage is the person page: a header shown on every tab, then the data
+// of the selected tab only.
 type personPage struct {
-	Person      domain.Person
-	TeamName    string
-	Level       string
-	History     []levelRow
-	Levels      []domain.Level
-	Progress    *store.PersonProgress
+	Person   domain.Person
+	TeamName string
+	Level    string
+	Progress *store.PersonProgress
+	Tabs     []personTab
+	Tab      string
+	// AddOpen unfolds the tab's add form.
+	AddOpen bool
+	Back    string
+	CSRF    string
+
+	Overview    personOverview
 	Entries     []entryView
+	EntryForm   entryFormData
 	Commitments []commitmentView
+	CommitForm  commitmentFormData
 	Meetings    []meetingRow
 	Work        []workRow
 	Metrics     domain.WorkMetrics
 	Standings   []releaseStanding
 	DocCount    int
-	EntryForm   entryFormData
-	CommitForm  commitmentFormData
-	Back        string
-	CSRF        string
+	History     []levelRow
+	Levels      []domain.Level
 }
 
 func (s *Server) personShow(w http.ResponseWriter, r *http.Request) error {
@@ -228,9 +288,40 @@ func (s *Server) personShow(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	back := fmt.Sprintf("/people/%d", id)
-	page := personPage{Person: p, Back: back, CSRF: csrfOf(r)}
+	tab := personTabFrom(r)
+	page := personPage{
+		Person: p, Tabs: personTabs, Tab: tab, AddOpen: r.URL.Query().Get("add") == "1",
+		Back: personTabURL(id, tab), CSRF: csrfOf(r),
+	}
+	if err := s.loadPersonHeader(ctx, &page); err != nil {
+		return err
+	}
 
+	var load func(context.Context, *http.Request, *personPage) error
+	switch tab {
+	case "notes":
+		load = s.loadNotesTab
+	case "commitments":
+		load = s.loadCommitmentsTab
+	case "meetings":
+		load = s.loadMeetingsTab
+	case "work":
+		load = s.loadWorkTab
+	case "level":
+		load = s.loadLevelTab
+	default:
+		load = s.loadOverviewTab
+	}
+	if err := load(ctx, r, &page); err != nil {
+		return err
+	}
+	return s.render(w, r, http.StatusOK, "person", "people", page)
+}
+
+// loadPersonHeader fills what every tab shows: team, current level and, for
+// reports, the improvement journal status.
+func (s *Server) loadPersonHeader(ctx context.Context, page *personPage) error {
+	p := page.Person
 	if p.TeamID != nil {
 		teams, err := s.store.ListTeams(ctx)
 		if err != nil {
@@ -242,27 +333,18 @@ func (s *Server) personShow(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 	}
-
-	history, err := s.store.LevelHistory(ctx, id)
+	level, err := s.currentLevelCode(ctx, p.ID, s.now())
 	if err != nil {
 		return err
 	}
-	for _, a := range history {
-		page.History = append(page.History, levelRow{Code: a.Level.Code, Title: a.Level.Title, From: a.EffectiveFrom})
-	}
-	if level, err := history.LevelAt(s.now()); err == nil {
-		page.Level = level.Code
-	}
-	if page.Levels, err = s.store.ListLevels(ctx); err != nil {
-		return err
-	}
+	page.Level = level
 
 	if p.Relationship == domain.RelationshipReport {
-		last, err := s.store.LastProgressCheck(ctx, id)
+		last, err := s.store.LastProgressCheck(ctx, p.ID)
 		if err != nil {
 			return err
 		}
-		outcomes, err := s.store.ProgressOutcomes(ctx, id)
+		outcomes, err := s.store.ProgressOutcomes(ctx, p.ID)
 		if err != nil {
 			return err
 		}
@@ -271,7 +353,66 @@ func (s *Server) personShow(w http.ResponseWriter, r *http.Request) error {
 			NoProgressStreak: domain.ConsecutiveNoProgress(outcomes),
 		}
 	}
+	return nil
+}
 
+func (s *Server) loadOverviewTab(ctx context.Context, r *http.Request, page *personPage) error {
+	id := page.Person.ID
+	names := map[int64]string{id: page.Person.Name}
+	open, err := s.store.ListCommitments(ctx, store.CommitmentFilter{PersonID: &id, OnlyOpen: true})
+	if err != nil {
+		return err
+	}
+	if len(open) > overviewCommitments {
+		page.Overview.MoreCommitments = len(open) - overviewCommitments
+		open = open[:overviewCommitments]
+	}
+	page.Overview.OpenCommitments = s.commitmentViews(open, names, page.Back, r)
+
+	_, labels, err := s.entryKindLabels(ctx)
+	if err != nil {
+		return err
+	}
+	notes, err := s.store.ListEntries(ctx, store.EntryFilter{PersonID: &id, Limit: overviewNotes})
+	if err != nil {
+		return err
+	}
+	page.Overview.LatestNotes = s.entryViews(notes, labels, page.Back, r)
+
+	meetings, err := s.store.ListMeetings(ctx, store.MeetingFilter{PersonID: &id, Limit: 1})
+	if err != nil {
+		return err
+	}
+	rows, err := s.meetingRows(ctx, meetings)
+	if err != nil {
+		return err
+	}
+	if len(rows) > 0 {
+		page.Overview.LastMeeting = &rows[0]
+	}
+
+	if page.Person.Relationship != domain.RelationshipReport {
+		return nil
+	}
+	releases, err := s.store.ListReleases(ctx)
+	if err != nil {
+		return err
+	}
+	rel := currentRelease(releases, s.now())
+	if rel == nil {
+		return nil
+	}
+	items, err := s.store.ListWorkItems(ctx, store.WorkFilter{PersonID: &id, ReleaseID: &rel.ID})
+	if err != nil {
+		return err
+	}
+	page.Overview.Release = rel
+	page.Overview.Standing = &releaseStanding{Release: *rel, Compliant: domain.ReleaseCompliant(items), Items: len(items)}
+	return nil
+}
+
+func (s *Server) loadNotesTab(ctx context.Context, r *http.Request, page *personPage) error {
+	id := page.Person.ID
 	kinds, labels, err := s.entryKindLabels(ctx)
 	if err != nil {
 		return err
@@ -280,31 +421,40 @@ func (s *Server) personShow(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	page.Entries = s.entryViews(entries, labels, back, r)
-
+	page.Entries = s.entryViews(entries, labels, page.Back, r)
 	tags, err := s.store.ListTags(ctx)
 	if err != nil {
 		return err
 	}
-	page.EntryForm = entryFormData{PersonID: id, Kinds: kinds, Tags: tags, Today: s.now().Format(dateLayout), Back: back, CSRF: csrfOf(r)}
-	page.CommitForm = commitmentFormData{PersonID: id, Back: back, CSRF: csrfOf(r)}
+	page.EntryForm = entryFormData{PersonID: id, Kinds: kinds, Tags: tags, Today: s.now().Format(dateLayout), Back: page.Back, CSRF: page.CSRF}
+	page.AddOpen = page.AddOpen || len(entries) == 0
+	return nil
+}
 
+func (s *Server) loadCommitmentsTab(ctx context.Context, r *http.Request, page *personPage) error {
+	id := page.Person.ID
 	commitments, err := s.store.ListCommitments(ctx, store.CommitmentFilter{PersonID: &id, IncludeVoided: true})
 	if err != nil {
 		return err
 	}
-	page.Commitments = s.commitmentViews(commitments, map[int64]string{id: p.Name}, back, r)
+	page.Commitments = s.commitmentViews(commitments, map[int64]string{id: page.Person.Name}, page.Back, r)
+	page.CommitForm = commitmentFormData{PersonID: id, Back: page.Back, CSRF: page.CSRF}
+	page.AddOpen = page.AddOpen || len(commitments) == 0
+	return nil
+}
 
-	meetings, err := s.store.ListMeetings(ctx, store.MeetingFilter{PersonID: &id, Limit: 20})
+func (s *Server) loadMeetingsTab(ctx context.Context, _ *http.Request, page *personPage) error {
+	meetings, err := s.store.ListMeetings(ctx, store.MeetingFilter{PersonID: &page.Person.ID, IncludeVoided: true})
 	if err != nil {
 		return err
 	}
 	page.Meetings, err = s.meetingRows(ctx, meetings)
-	if err != nil {
-		return err
-	}
+	return err
+}
 
-	if err := s.fillWork(ctx, &page, id); err != nil {
+func (s *Server) loadWorkTab(ctx context.Context, _ *http.Request, page *personPage) error {
+	id := page.Person.ID
+	if err := s.fillWork(ctx, page, id); err != nil {
 		return err
 	}
 	docs, err := s.store.ListEntries(ctx, store.EntryFilter{PersonID: &id, Tag: documentationTag, FinalizedOnly: true})
@@ -312,7 +462,22 @@ func (s *Server) personShow(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	page.DocCount = len(docs)
-	return s.render(w, r, http.StatusOK, "person", "people", page)
+	return nil
+}
+
+func (s *Server) loadLevelTab(ctx context.Context, _ *http.Request, page *personPage) error {
+	history, err := s.store.LevelHistory(ctx, page.Person.ID)
+	if err != nil {
+		return err
+	}
+	for _, a := range history {
+		page.History = append(page.History, levelRow{Code: a.Level.Code, Title: a.Level.Title, From: a.EffectiveFrom})
+	}
+	if page.Levels, err = s.store.ListLevels(ctx); err != nil {
+		return err
+	}
+	page.AddOpen = page.AddOpen || len(history) == 0
+	return nil
 }
 
 // fillWork adds the person's tasks, metrics and per-release standing.

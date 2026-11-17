@@ -34,7 +34,7 @@
 <table>
   <tr><th>Who</th><th>What</th><th>Due</th><th></th></tr>
   {{range .Commitments}}<tr>
-    <td>{{.PersonName}}</td>
+    <td><a href="/people/{{.C.PersonID}}?tab=commitments">{{.PersonName}}</a></td>
     <td>{{.C.Content}}{{if .C.Deliverable}}<br><span class="muted">Deliverable: {{.C.Deliverable}}</span>{{end}}</td>
     <td>{{datePtr .C.DueOn}}</td>
     <td>{{if .Overdue}}<span class="badge bad">Overdue</span>{{end}}</td>

@@ -96,7 +96,7 @@ func TestDocumentationContributionsAreCounted(t *testing.T) {
 	mk("A draft doc note", 21, []string{"documentation"}, false) // drafts are not part of the record
 	mk("Unrelated note", 22, []string{"ownership"}, true)
 
-	mustContain(t, c.get("/people/"+id(ana)), "Documentation contributions: 2")
+	mustContain(t, c.get("/people/"+id(ana)+"?tab=work"), "Documentation contributions: 2")
 
 	base := "/people/" + id(ana) + "/report"
 	mustContain(t, c.get(base), "Documentation contributions: 2")
