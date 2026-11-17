@@ -210,5 +210,38 @@ func TestPerson_WorkTabShowsTheTicket(t *testing.T) {
 	c.createWorkItem(t, 1, ana, "Pair on alerts", "", "at")
 
 	page := c.get("/people/" + id(ana) + "?tab=work")
-	mustContain(t, page, "<th>Ticket</th>", "<td>BILL-482</td>", "Pair on alerts")
+	mustContain(t, page, ">Ticket</a></th>", "<td>BILL-482</td>", "Pair on alerts")
+}
+
+func TestPerson_WorkTabSortsByAnyColumn(t *testing.T) {
+	env := newEnv(t)
+	c := env.loggedIn()
+	ana := c.createPerson(t, "Ana", "report")
+	c.post("/releases", url.Values{"name": {"R23.4"}, "starts_on": {"2023-10-01"}, "ends_on": {"2023-12-31"}})
+	c.post("/releases", url.Values{"name": {"R24.1"}, "starts_on": {"2024-01-01"}, "ends_on": {"2024-03-31"}})
+	c.createWorkItem(t, 2, ana, "Zebra task", "PAY-10", "above")
+	c.createWorkItem(t, 1, ana, "Alpha task", "PAY-9", "at")
+	tab := "/people/" + id(ana) + "?tab=work"
+
+	inOrder := func(page string, want ...string) {
+		t.Helper()
+		last := -1
+		for _, w := range want {
+			i := strings.Index(page, w)
+			if i < 0 || i < last {
+				t.Fatalf("%q not after the previous one in %v", w, want)
+			}
+			last = i
+		}
+	}
+
+	// Newest release first by default.
+	page := c.get(tab).Body.String()
+	inOrder(page, "Zebra task", "Alpha task")
+	mustContain(t, c.get(tab), `<th aria-sort="descending"><a class="sort" href="/people/`+id(ana)+`?tab=work&amp;sort=release&amp;dir=asc">Release</a></th>`)
+
+	inOrder(c.get(tab+"&sort=release&dir=asc").Body.String(), "Alpha task", "Zebra task")
+	inOrder(c.get(tab+"&sort=task&dir=asc").Body.String(), "Alpha task", "Zebra task")
+	inOrder(c.get(tab+"&sort=task&dir=desc").Body.String(), "Zebra task", "Alpha task")
+	inOrder(c.get(tab+"&sort=ticket&dir=asc").Body.String(), "PAY-9", "PAY-10")
 }

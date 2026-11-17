@@ -101,7 +101,7 @@
 </div>
 {{range .Standings}}<p>{{.Release.Name}}: {{template "complianceBadge" .Compliant}}</p>{{end}}
 <table>
-  <tr><th>Task</th><th>Ticket</th><th>Release</th><th>Stretch</th><th>Picked by</th><th>Status</th><th></th></tr>
+  <tr>{{range .WorkHeads}}<th{{if .AriaSort}} aria-sort="{{.AriaSort}}"{{end}}><a class="sort" href="{{.URL}}">{{.Label}}</a></th>{{end}}<th></th></tr>
   {{range .Work}}<tr>
     <td><a href="/work/{{.Item.ID}}">{{.Item.Title}}</a></td><td>{{.Item.ExternalRef}}</td><td>{{.ReleaseName}}</td>
     <td>{{human (print .Item.Stretch)}}</td><td>{{human (print .Item.PickedBy)}}</td><td>{{human (print .Item.Status)}}</td>

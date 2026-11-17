@@ -277,6 +277,7 @@ type personPage struct {
 	CommitForm  commitmentFormData
 	Meetings    []meetingRow
 	Work        []workRow
+	WorkHeads   []sortHeader
 	Metrics     domain.WorkMetrics
 	Standings   []releaseStanding
 	DocCount    int
@@ -465,9 +466,10 @@ func (s *Server) loadMeetingsTab(ctx context.Context, _ *http.Request, page *per
 	return err
 }
 
-func (s *Server) loadWorkTab(ctx context.Context, _ *http.Request, page *personPage) error {
+func (s *Server) loadWorkTab(ctx context.Context, r *http.Request, page *personPage) error {
 	id := page.Person.ID
-	releases, err := s.fillWork(ctx, page, id)
+	by := taskSortFrom(r.URL.Query())
+	releases, err := s.fillWork(ctx, page, id, by)
 	if err != nil {
 		return err
 	}
@@ -481,6 +483,7 @@ func (s *Server) loadWorkTab(ctx context.Context, _ *http.Request, page *personP
 		}
 		page.AddOpen = page.AddOpen || len(page.Work) == 0
 	}
+	page.WorkHeads = taskSortHeaders(personTabURL(id, "work"), by)
 	docs, err := s.store.ListEntries(ctx, store.EntryFilter{PersonID: &id, Tag: documentationTag, FinalizedOnly: true})
 	if err != nil {
 		return err
@@ -504,9 +507,9 @@ func (s *Server) loadLevelTab(ctx context.Context, _ *http.Request, page *person
 	return nil
 }
 
-// fillWork adds the person's tasks, metrics and per-release standing, and
-// returns all releases, newest first.
-func (s *Server) fillWork(ctx context.Context, page *personPage, personID int64) ([]domain.Release, error) {
+// fillWork adds the person's tasks in the given order, metrics and
+// per-release standing, and returns all releases, newest first.
+func (s *Server) fillWork(ctx context.Context, page *personPage, personID int64, by taskSort) ([]domain.Release, error) {
 	items, err := s.store.ListWorkItems(ctx, store.WorkFilter{PersonID: &personID})
 	if err != nil {
 		return nil, err
@@ -524,6 +527,7 @@ func (s *Server) fillWork(ctx context.Context, page *personPage, personID int64)
 		page.Work = append(page.Work, workRow{Item: it, ReleaseName: byID[it.ReleaseID].Name})
 		perRelease[it.ReleaseID] = append(perRelease[it.ReleaseID], it)
 	}
+	sortWorkRows(page.Work, by, byID)
 	page.Metrics = domain.ComputeWorkMetrics(items)
 	for _, rel := range releases {
 		if group, ok := perRelease[rel.ID]; ok {

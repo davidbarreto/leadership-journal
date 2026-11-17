@@ -43,6 +43,11 @@ fieldset legend { font-weight: 600; padding: 0 .3rem; }
 table { width: 100%; border-collapse: collapse; margin: .5rem 0 1rem; }
 th, td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+th a.sort { color: inherit; text-decoration: none; }
+th a.sort:hover { text-decoration: underline; }
+th[aria-sort] { color: var(--fg); }
+th[aria-sort="ascending"] a.sort::after { content: " \25B2"; }
+th[aria-sort="descending"] a.sort::after { content: " \25BC"; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1rem; margin: .6rem 0; }
 .card.draft { background: var(--draft-bg); border-style: dashed; }
 .card.voided { opacity: .6; }
