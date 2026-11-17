@@ -61,6 +61,38 @@ type taskFormData struct {
 	CSRF        string
 }
 
+// quickMeeting is a one-click button that starts a meeting about a person.
+type quickMeeting struct {
+	PersonID int64
+	Kind     domain.MeetingKind
+	CSRF     string
+}
+
+// quickMeetingKind is the kind a one-click start uses: the first, in display
+// order, that is about one person (the 1:1 out of the box). ok is false when
+// no active kind is.
+func (s *Server) quickMeetingKind(ctx context.Context) (kind domain.MeetingKind, ok bool, err error) {
+	kinds, err := s.store.ListMeetingKinds(ctx)
+	if err != nil {
+		return kind, false, err
+	}
+	for _, k := range kinds {
+		if k.RequiresPerson {
+			return k, true, nil
+		}
+	}
+	return kind, false, nil
+}
+
+// quickMeetingFor is the start button for a person, or nil when there is
+// none: meetings are never about the owner.
+func quickMeetingFor(p domain.Person, kind domain.MeetingKind, ok bool, csrf string) *quickMeeting {
+	if !ok || p.Relationship == domain.RelationshipSelf {
+		return nil
+	}
+	return &quickMeeting{PersonID: p.ID, Kind: kind, CSRF: csrf}
+}
+
 func (s *Server) entryKindLabels(ctx context.Context) (kinds []domain.EntryKind, labels map[string]string, err error) {
 	kinds, err = s.store.ListEntryKinds(ctx)
 	if err != nil {

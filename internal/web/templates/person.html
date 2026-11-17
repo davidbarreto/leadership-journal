@@ -11,6 +11,12 @@
   {{if ge .NoProgressStreak 2}}<span class="badge bad">NO PROGRESS ×{{.NoProgressStreak}} in a row</span>{{end}}
 </p>
 {{end}}
+<p class="noprint quick">
+  {{with .Start}}{{template "startMeeting" .}}{{end}}
+  <a class="button secondary" href="/people/{{.Person.ID}}?tab=notes&add=1">Add note</a>
+  <a class="button secondary" href="/people/{{.Person.ID}}?tab=commitments&add=1">Add commitment</a>
+  {{if eq .Person.Relationship "report"}}<a class="button secondary" href="/people/{{.Person.ID}}?tab=work&add=1">Add task</a>{{end}}
+</p>
 <p class="noprint">
   <a href="/people/{{.Person.ID}}/edit">Edit</a>
   {{if eq .Person.Relationship "report"}} · <a href="/people/{{.Person.ID}}/report">Report for your manager</a>{{end}}
@@ -79,6 +85,12 @@
 {{end}}
 
 {{if eq .Tab "work"}}
+{{if .CanAddTask}}
+<details class="noprint"{{if .AddOpen}} open{{end}}><summary>Add a task</summary>
+  {{template "taskForm" .TaskForm}}
+  <p class="muted">The judgment is about this person and this task, and is locked when you finalize.</p>
+</details>
+{{else if eq .Person.Relationship "report"}}<p class="muted">Add a release on the <a href="/work">Work page</a> to start tracking tasks.</p>{{end}}
 <p>Documentation contributions: {{.DocCount}} <span class="muted">(finalized notes tagged "documentation")</span></p>
 {{if .Work}}
 <div class="grid">
@@ -96,7 +108,7 @@
     <td>{{template "lifecycleBadge" .Item}}</td>
   </tr>{{end}}
 </table>
-{{else}}<p class="muted">No tasks yet. <a href="/work">Add one from the Work page.</a></p>{{end}}
+{{else}}<p class="muted">No tasks yet.</p>{{end}}
 {{end}}
 
 {{if eq .Tab "level"}}

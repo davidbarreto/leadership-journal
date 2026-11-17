@@ -28,7 +28,7 @@ Stop the journal, then run `make reset-password` (set `JOURNAL_DATA_DIR` if you 
 
 ## What it does
 
-- **People**: your reports, your manager and yourself (your own growth uses the same tools), with team and level history. Each person's page has tabs: an **Overview** (open commitments, last meeting, standing in the running release, latest notes), then **Notes**, **Commitments**, **Meetings**, **Work** and **Level**, each with its own add form folded at the top. Actions taken on a tab return to that tab.
+- **People**: your reports, your manager and yourself (your own growth uses the same tools), with team and level history. Each person's page has tabs: an **Overview** (open commitments, last meeting, standing in the running release, latest notes), then **Notes**, **Commitments**, **Meetings**, **Work** and **Level**, each with its own add form folded at the top. Actions taken on a tab return to that tab. One click starts a 1:1 (the first meeting kind that is about a person) from the person's page or the people list, and notes, commitments and tasks are added from the person's page without leaving it.
 - **Meetings** (1:1, team, standup, other): minutes with a question template per kind, notes in Markdown, action items, and notes about people made in the meeting.
 - **Notes** about a person (objectives, strengths, improvement points, feedback received and given, observations, progress checks) with tags, also between meetings.
 - **Commitments**: promises and action items in both directions, with an append-only status history. Learning goals must name a deliverable (a demo or presentation, not "I read it") and a due date.

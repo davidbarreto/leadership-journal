@@ -19,6 +19,15 @@
 </form>
 {{end}}
 
+{{define "startMeeting"}}
+<form method="post" action="/meetings" class="inline noprint">
+  {{template "csrf" .}}
+  <input type="hidden" name="person_id" value="{{.PersonID}}">
+  <input type="hidden" name="kind" value="{{.Kind.Code}}">
+  <button>Start {{.Kind.Label}}</button>
+</form>
+{{end}}
+
 {{define "taskForm"}}
 <form method="post" action="{{.Action}}" class="card noprint">
   {{template "csrf" .}}

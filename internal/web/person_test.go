@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	"leadership-journal/internal/domain"
@@ -120,4 +121,82 @@ func TestPerson_AddFormsUnfoldWhenEmptyOrAsked(t *testing.T) {
 	c.post("/entries", url.Values{"person_id": {id(pid)}, "kind": {"observation"}, "body": {"x"}})
 	mustContain(t, c.get(notes), folded)
 	mustContain(t, c.get(notes+"&add=1"), open)
+}
+
+func TestPerson_StartA1on1InOneClick(t *testing.T) {
+	env := newEnv(t)
+	c := env.loggedIn()
+	pid := c.createPerson(t, "Ana", "report")
+
+	page := c.get("/people/" + id(pid) + "?tab=notes")
+	mustContain(t, page, `name="kind" value="one_on_one"`, "Start 1:1")
+
+	// What the button posts: the person and the kind, no time (meaning now).
+	rec := c.post("/meetings", url.Values{"person_id": {id(pid)}, "kind": {"one_on_one"}})
+	mustStatus(t, rec, http.StatusSeeOther)
+	mid := idFrom(t, location(rec), "/meetings/")
+	m, err := env.st.GetMeeting(ctx(), mid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Kind != "one_on_one" || m.PersonID == nil || *m.PersonID != pid || !m.StartsAt.Equal(env.now) || !m.IsDraft() {
+		t.Errorf("meeting = %+v, want a draft 1:1 with Ana starting now", m)
+	}
+}
+
+func TestPerson_QuickActionsFollowTheRelationship(t *testing.T) {
+	c := newEnv(t).loggedIn()
+	self := c.createPerson(t, "Me", "self")
+	boss := c.createPerson(t, "Boss", "manager")
+	ana := c.createPerson(t, "Ana", "report")
+
+	mustNotContain(t, c.get("/people/"+id(self)), "Start 1:1", "Add task")
+	bossPage := c.get("/people/" + id(boss))
+	mustContain(t, bossPage, "Start 1:1", "Add note")
+	mustNotContain(t, bossPage, "Add task")
+	mustContain(t, c.get("/people/"+id(ana)), "Start 1:1", "Add task")
+
+	// The people list offers the same button to everyone but the owner.
+	list := c.get("/people").Body.String()
+	for _, who := range []int64{boss, ana} {
+		if !strings.Contains(list, `name="person_id" value="`+id(who)+`"`) {
+			t.Errorf("people list has no start button for person %d", who)
+		}
+	}
+	if strings.Contains(list, `name="person_id" value="`+id(self)+`"`) {
+		t.Error("people list offers a meeting about the owner")
+	}
+}
+
+func TestPerson_AddATaskFromTheWorkTab(t *testing.T) {
+	env := newEnv(t)
+	c := env.loggedIn()
+	ana := c.createPerson(t, "Ana", "report")
+	boss := c.createPerson(t, "Boss", "manager")
+	tab := "/people/" + id(ana) + "?tab=work"
+
+	// Without a release there is nowhere to put a task yet.
+	mustContain(t, c.get(tab), "Add a release on the")
+	mustNotContain(t, c.get(tab), `action="/work"`)
+
+	c.post("/releases", url.Values{"name": {"R23.4"}, "starts_on": {"2023-10-01"}, "ends_on": {"2023-12-31"}})
+	c.post("/releases", url.Values{"name": {"R24.1"}, "starts_on": {"2024-01-01"}, "ends_on": {"2024-03-31"}})
+	page := c.get(tab)
+	// The person is fixed and the running release is preselected.
+	mustContain(t, page, `action="/work"`, `<input type="hidden" name="person_id" value="`+id(ana)+`">`,
+		`<option value="2" selected>R24.1</option>`, `<details class="noprint" open><summary>Add a task</summary>`)
+	mustNotContain(t, page, `<select name="person_id">`)
+
+	rec := c.post("/work", url.Values{
+		"release_id": {"2"}, "person_id": {id(ana)}, "title": {"Migrate billing job"}, "picked_by": {"self"},
+		"stretch": {"above"}, "rationale": {"New area"}, "back": {tab},
+	})
+	mustStatus(t, rec, http.StatusSeeOther)
+	if location(rec) != tab {
+		t.Errorf("redirect = %q, want back to %q", location(rec), tab)
+	}
+	mustContain(t, c.get(tab), "Migrate billing job", "Task saved as a draft")
+
+	// Managers do not get tasks.
+	mustNotContain(t, c.get("/people/"+id(boss)+"?tab=work"), `action="/work"`, "Add a release on the")
 }

@@ -29,6 +29,7 @@ type personRow struct {
 	TeamName string
 	Level    string
 	Progress *store.PersonProgress
+	Start    *quickMeeting
 }
 
 type peopleListPage struct {
@@ -59,13 +60,17 @@ func (s *Server) peopleList(w http.ResponseWriter, r *http.Request) error {
 		progressByID[progress[i].Person.ID] = &progress[i]
 	}
 
+	kind, hasKind, err := s.quickMeetingKind(ctx)
+	if err != nil {
+		return err
+	}
 	page := peopleListPage{Empty: len(people) == 0}
 	for _, p := range people {
 		level, err := s.currentLevelCode(ctx, p.ID, s.now())
 		if err != nil {
 			return err
 		}
-		row := personRow{Person: p, Level: level, Progress: progressByID[p.ID]}
+		row := personRow{Person: p, Level: level, Progress: progressByID[p.ID], Start: quickMeetingFor(p, kind, hasKind, csrfOf(r))}
 		if p.TeamID != nil {
 			row.TeamName = teamNames[*p.TeamID]
 		}
@@ -257,6 +262,7 @@ type personPage struct {
 	TeamName string
 	Level    string
 	Progress *store.PersonProgress
+	Start    *quickMeeting
 	Tabs     []personTab
 	Tab      string
 	// AddOpen unfolds the tab's add form.
@@ -274,6 +280,8 @@ type personPage struct {
 	Metrics     domain.WorkMetrics
 	Standings   []releaseStanding
 	DocCount    int
+	TaskForm    taskFormData
+	CanAddTask  bool
 	History     []levelRow
 	Levels      []domain.Level
 }
@@ -353,6 +361,11 @@ func (s *Server) loadPersonHeader(ctx context.Context, page *personPage) error {
 			NoProgressStreak: domain.ConsecutiveNoProgress(outcomes),
 		}
 	}
+	kind, ok, err := s.quickMeetingKind(ctx)
+	if err != nil {
+		return err
+	}
+	page.Start = quickMeetingFor(p, kind, ok, page.CSRF)
 	return nil
 }
 
@@ -454,8 +467,19 @@ func (s *Server) loadMeetingsTab(ctx context.Context, _ *http.Request, page *per
 
 func (s *Server) loadWorkTab(ctx context.Context, _ *http.Request, page *personPage) error {
 	id := page.Person.ID
-	if err := s.fillWork(ctx, page, id); err != nil {
+	releases, err := s.fillWork(ctx, page, id)
+	if err != nil {
 		return err
+	}
+	// Tasks are only for reports, as on the work board.
+	if page.Person.Relationship == domain.RelationshipReport && len(releases) > 0 {
+		page.CanAddTask = true
+		page.TaskForm = taskFormData{
+			Action: "/work", Item: domain.WorkItem{PersonID: id, ReleaseID: currentRelease(releases, s.now()).ID},
+			AssignedAt: s.now().Format(dateLayout), Releases: releases, FixedPerson: true,
+			Submit: "Add as draft", Back: page.Back, CSRF: page.CSRF,
+		}
+		page.AddOpen = page.AddOpen || len(page.Work) == 0
 	}
 	docs, err := s.store.ListEntries(ctx, store.EntryFilter{PersonID: &id, Tag: documentationTag, FinalizedOnly: true})
 	if err != nil {
@@ -480,15 +504,16 @@ func (s *Server) loadLevelTab(ctx context.Context, _ *http.Request, page *person
 	return nil
 }
 
-// fillWork adds the person's tasks, metrics and per-release standing.
-func (s *Server) fillWork(ctx context.Context, page *personPage, personID int64) error {
+// fillWork adds the person's tasks, metrics and per-release standing, and
+// returns all releases, newest first.
+func (s *Server) fillWork(ctx context.Context, page *personPage, personID int64) ([]domain.Release, error) {
 	items, err := s.store.ListWorkItems(ctx, store.WorkFilter{PersonID: &personID})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	releases, err := s.store.ListReleases(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	byID := map[int64]domain.Release{}
 	for _, rel := range releases {
@@ -505,5 +530,5 @@ func (s *Server) fillWork(ctx context.Context, page *personPage, personID int64)
 			page.Standings = append(page.Standings, releaseStanding{Release: rel, Compliant: domain.ReleaseCompliant(group), Items: len(group)})
 		}
 	}
-	return nil
+	return releases, nil
 }

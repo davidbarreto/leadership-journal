@@ -174,7 +174,13 @@ func (s *Server) workCreate(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.log.Info("work item created", "work_item_id", id, "person_id", item.PersonID, "stretch", item.Stretch, "request_id", requestID(r.Context()))
-	return s.redirect(w, r, fmt.Sprintf("/work/%d", id), "Task saved as a draft. Finalize it to lock the stretch judgment.")
+	// From a person's page the form says where to return; from the board it
+	// opens the new task, ready to finalize.
+	to := fmt.Sprintf("/work/%d", id)
+	if back := r.PostFormValue("back"); isLocalPath(back) {
+		to = back
+	}
+	return s.redirect(w, r, to, "Task saved as a draft. Finalize it to lock the stretch judgment.")
 }
 
 type workItemPage struct {

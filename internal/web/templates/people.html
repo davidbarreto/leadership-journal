@@ -1,6 +1,6 @@
 {{define "peopleTable"}}
 <table>
-  <tr><th>Name</th><th>Role</th><th>Team</th><th>Level</th><th>Improvement journal</th></tr>
+  <tr><th>Name</th><th>Role</th><th>Team</th><th>Level</th><th>Improvement journal</th><th></th></tr>
   {{range .}}
   <tr>
     <td><a href="/people/{{.Person.ID}}">{{.Person.Name}}</a></td>
@@ -12,6 +12,7 @@
       {{if .Overdue}}<span class="badge warn">Overdue</span>{{end}}
       {{if ge .NoProgressStreak 2}}<span class="badge bad">NO PROGRESS ×{{.NoProgressStreak}}</span>{{end}}
     {{end}}</td>
+    <td>{{with .Start}}{{template "startMeeting" .}}{{end}}</td>
   </tr>
   {{end}}
 </table>
