@@ -30,6 +30,7 @@ type workBoardPage struct {
 	Compliance []store.ComplianceRow
 	Rows       []workRow
 	People     []domain.Person
+	TaskForm   taskFormData
 	Today      string
 }
 
@@ -86,6 +87,13 @@ func (s *Server) workBoard(w http.ResponseWriter, r *http.Request) error {
 	}
 	if page.People, err = s.store.ListPeople(ctx, domain.RelationshipReport); err != nil {
 		return err
+	}
+	page.TaskForm = taskFormData{
+		Action: "/work", AssignedAt: page.Today, Releases: releases, People: page.People,
+		Submit: "Add as draft", CSRF: csrfOf(r),
+	}
+	if page.Selected != nil {
+		page.TaskForm.Item.ReleaseID = page.Selected.ID
 	}
 	return s.render(w, r, http.StatusOK, "work", "work", page)
 }
@@ -184,6 +192,7 @@ type workItemPage struct {
 	CompletedAt string
 	Today       string
 	Back        string
+	TaskForm    taskFormData
 }
 
 func (s *Server) workShow(w http.ResponseWriter, r *http.Request) error {
@@ -215,6 +224,10 @@ func (s *Server) workShow(w http.ResponseWriter, r *http.Request) error {
 		Movable:  live && (item.Status == domain.WorkPlanned || item.Status == domain.WorkInProgress),
 		Tracking: live, People: people, Releases: releases,
 		AssignedAt: item.AssignedAt.Format(dateLayout), Today: s.now().Format(dateLayout), Back: fmt.Sprintf("/work/%d", id),
+	}
+	page.TaskForm = taskFormData{
+		Action: fmt.Sprintf("/work/%d", id), Item: item, AssignedAt: page.AssignedAt, Releases: releases, People: people,
+		Submit: "Save draft", Back: page.Back, CSRF: csrfOf(r),
 	}
 	for _, rel := range releases {
 		if rel.ID == item.ReleaseID {

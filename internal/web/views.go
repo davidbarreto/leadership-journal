@@ -46,6 +46,21 @@ type commitmentFormData struct {
 	CSRF      string
 }
 
+// taskFormData feeds the task form partial, used to add a task or edit a
+// draft one. Item holds the preselected values. With FixedPerson the form
+// does not offer a person choice and posts Item.PersonID.
+type taskFormData struct {
+	Action      string
+	Item        domain.WorkItem
+	AssignedAt  string
+	Releases    []domain.Release
+	People      []domain.Person
+	FixedPerson bool
+	Submit      string
+	Back        string
+	CSRF        string
+}
+
 func (s *Server) entryKindLabels(ctx context.Context) (kinds []domain.EntryKind, labels map[string]string, err error) {
 	kinds, err = s.store.ListEntryKinds(ctx)
 	if err != nil {

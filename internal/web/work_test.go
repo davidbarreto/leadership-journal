@@ -221,3 +221,28 @@ func TestWork_ReleaseUpdate(t *testing.T) {
 	}
 	mustStatus(t, c.post("/releases/99", url.Values{"name": {"X"}, "starts_on": {"2024-01-01"}, "ends_on": {"2024-02-01"}}), http.StatusNotFound)
 }
+
+func TestWork_TaskFormPreselectsValues(t *testing.T) {
+	env := newEnv(t)
+	c := env.loggedIn()
+	c.createPerson(t, "Ana", "report")
+	bia := c.createPerson(t, "Bia", "report")
+	c.post("/releases", url.Values{"name": {"R24.1"}, "starts_on": {"2024-01-01"}, "ends_on": {"2024-03-31"}})
+	c.post("/releases", url.Values{"name": {"R24.2"}, "starts_on": {"2024-04-01"}, "ends_on": {"2024-06-30"}})
+	rid := int64(2)
+
+	// The board offers the release on screen.
+	mustContain(t, c.get("/work?release="+id(rid)), `<option value="2" selected>R24.2</option>`)
+
+	rec := c.post("/work", url.Values{
+		"release_id": {id(rid)}, "person_id": {id(bia)}, "title": {"Write the runbook"},
+		"picked_by": {"self"}, "stretch": {"at"}, "rationale": {"Did one before"}, "assigned_at": {"2024-04-02"},
+	})
+	mustStatus(t, rec, http.StatusSeeOther)
+	page := c.get(location(rec))
+	mustContain(t, page,
+		`<option value="2" selected>R24.2</option>`,
+		`<option value="`+id(bia)+`" selected>Bia</option>`,
+		`<option value="self" selected>`, `<option value="at" selected>`,
+		`value="Write the runbook"`, `value="Did one before"`, `value="2024-04-02"`)
+}

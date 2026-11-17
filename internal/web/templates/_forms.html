@@ -19,6 +19,40 @@
 </form>
 {{end}}
 
+{{define "taskForm"}}
+<form method="post" action="{{.Action}}" class="card noprint">
+  {{template "csrf" .}}
+  {{with .Back}}<input type="hidden" name="back" value="{{.}}">{{end}}
+  {{if .FixedPerson}}<input type="hidden" name="person_id" value="{{.Item.PersonID}}">{{end}}
+  <div class="row">
+    <label>Release <select name="release_id">{{range .Releases}}<option value="{{.ID}}"{{if eq .ID $.Item.ReleaseID}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+    {{if not .FixedPerson}}
+    <label>Person <select name="person_id">{{range .People}}<option value="{{.ID}}"{{if eq .ID $.Item.PersonID}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+    {{end}}
+    <label>Assigned <input type="date" name="assigned_at" value="{{.AssignedAt}}"></label>
+  </div>
+  <div class="row">
+    <label>Task <input type="text" name="title" value="{{.Item.Title}}" required></label>
+    <label>Ticket (optional) <input type="text" name="external_ref" value="{{.Item.ExternalRef}}"></label>
+  </div>
+  <div class="row">
+    <label>Picked by
+      <select name="picked_by">
+        <option value="lead"{{if eq .Item.PickedBy "lead"}} selected{{end}}>You (assigned)</option>
+        <option value="self"{{if eq .Item.PickedBy "self"}} selected{{end}}>The person (they took it)</option>
+      </select></label>
+    <label>Stretch for this person
+      <select name="stretch">
+        <option value="above"{{if eq .Item.Stretch "above"}} selected{{end}}>Above their level</option>
+        <option value="at"{{if eq .Item.Stretch "at"}} selected{{end}}>At their level</option>
+        <option value="below"{{if eq .Item.Stretch "below"}} selected{{end}}>Below their level</option>
+      </select></label>
+  </div>
+  <label>Why? (required: new area for them, or they did it before…) <input type="text" name="rationale" value="{{.Item.StretchRationale}}" required></label>
+  <button>{{.Submit}}</button>
+</form>
+{{end}}
+
 {{define "commitmentForm"}}
 <form method="post" action="/commitments" class="card noprint">
   {{template "csrf" .}}

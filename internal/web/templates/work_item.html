@@ -12,33 +12,7 @@
 
 <h2>Stretch judgment</h2>
 {{if .Editable}}
-<form method="post" action="/work/{{.Item.ID}}" class="card">
-  {{template "csrf" $}}<input type="hidden" name="back" value="{{.Back}}">
-  <div class="row">
-    <label>Release <select name="release_id">{{range .Releases}}<option value="{{.ID}}"{{if eq .ID $.Data.Item.ReleaseID}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
-    <label>Person <select name="person_id">{{range .People}}<option value="{{.ID}}"{{if eq .ID $.Data.Item.PersonID}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
-    <label>Assigned <input type="date" name="assigned_at" value="{{.AssignedAt}}"></label>
-  </div>
-  <div class="row">
-    <label>Task <input type="text" name="title" value="{{.Item.Title}}" required></label>
-    <label>Ticket <input type="text" name="external_ref" value="{{.Item.ExternalRef}}"></label>
-  </div>
-  <div class="row">
-    <label>Picked by
-      <select name="picked_by">
-        <option value="lead"{{if eq .Item.PickedBy "lead"}} selected{{end}}>You (assigned)</option>
-        <option value="self"{{if eq .Item.PickedBy "self"}} selected{{end}}>The person (they took it)</option>
-      </select></label>
-    <label>Stretch for this person
-      <select name="stretch">
-        <option value="above"{{if eq .Item.Stretch "above"}} selected{{end}}>Above their level</option>
-        <option value="at"{{if eq .Item.Stretch "at"}} selected{{end}}>At their level</option>
-        <option value="below"{{if eq .Item.Stretch "below"}} selected{{end}}>Below their level</option>
-      </select></label>
-  </div>
-  <label>Why <input type="text" name="rationale" value="{{.Item.StretchRationale}}" required></label>
-  <button>Save draft</button>
-</form>
+{{template "taskForm" .TaskForm}}
 <form method="post" action="/work/{{.Item.ID}}/finalize" class="inline">{{template "csrf" $}}<button>Finalize task</button></form>
 <form method="post" action="/work/{{.Item.ID}}/delete" class="inline">{{template "csrf" $}}<input type="hidden" name="back" value="{{.Back}}"><button class="danger">Delete this draft</button></form>
 <p class="muted">Finalizing locks the judgment below: who, which release, who picked it, how much of a stretch it is and why.</p>
