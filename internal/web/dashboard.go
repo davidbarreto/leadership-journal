@@ -32,8 +32,7 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) error {
 	if page.Drafts, err = s.store.PendingDrafts(ctx); err != nil {
 		return err
 	}
-	d := page.Drafts
-	page.AnyDrafts = d.Meetings+d.Entries+d.Commitments+d.WorkItems > 0
+	page.AnyDrafts = page.Drafts.Total() > 0
 
 	if page.Progress, err = s.store.ProgressStatuses(ctx, s.now(), s.progressDays); err != nil {
 		return err

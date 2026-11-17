@@ -80,25 +80,6 @@ func (s *Store) ReleaseCompliance(ctx context.Context, releaseID int64) ([]Compl
 	return out, nil
 }
 
-// DraftCounts is how many records still wait to be finalized.
-type DraftCounts struct {
-	Meetings, Entries, Commitments, WorkItems int
-}
-
-// PendingDrafts counts the drafts of each journal table.
-func (s *Store) PendingDrafts(ctx context.Context) (DraftCounts, error) {
-	var c DraftCounts
-	for _, item := range []struct {
-		t   table
-		dst *int
-	}{{tableMeeting, &c.Meetings}, {tableEntry, &c.Entries}, {tableCommitment, &c.Commitments}, {tableWorkItem, &c.WorkItems}} {
-		if err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM `+string(item.t)+` WHERE finalized_at IS NULL`).Scan(item.dst); err != nil {
-			return c, err
-		}
-	}
-	return c, nil
-}
-
 // SearchHit is one full-text match with enough context to show and link it.
 type SearchHit struct {
 	Kind       string // entry, meeting or answer

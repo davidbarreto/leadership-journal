@@ -12,6 +12,7 @@
   <a class="brand" href="/">Leadership Journal</a>
   <nav>
     <a href="/"{{if eq .Active "dashboard"}} class="active"{{end}}>Dashboard</a>
+    <a href="/drafts"{{if eq .Active "drafts"}} class="active"{{end}}>Drafts{{with .Drafts}} <span class="badge">{{.}}</span>{{end}}</a>
     <a href="/people"{{if eq .Active "people"}} class="active"{{end}}>People</a>
     <a href="/meetings"{{if eq .Active "meetings"}} class="active"{{end}}>Meetings</a>
     <a href="/work"{{if eq .Active "work"}} class="active"{{end}}>Work</a>

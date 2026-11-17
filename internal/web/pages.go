@@ -4,6 +4,7 @@ package web
 func (s *Server) registerPages(rt router) {
 	s.registerPeople(rt)
 	s.registerMeetings(rt)
+	s.registerDrafts(rt)
 	s.registerEntries(rt)
 	s.registerCommitments(rt)
 	s.registerWork(rt)

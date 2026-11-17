@@ -133,8 +133,10 @@ type pageData struct {
 	CSRF    string
 	PreAuth string
 	Flash   *flash
-	Now     time.Time
-	Data    any
+	// Drafts is how many records wait to be finalized, shown in the menu.
+	Drafts int
+	Now    time.Time
+	Data   any
 }
 
 // render shows a page inside the layout. The page is rendered to a buffer
@@ -149,6 +151,13 @@ func (s *Server) renderFlash(w http.ResponseWriter, r *http.Request, status int,
 	pd := pageData{Active: active, Now: s.now(), Data: data, Flash: f}
 	if sess, ok := sessionFromContext(r.Context()); ok {
 		pd.Authed, pd.CSRF = true, sess.CSRFToken
+		// The menu count is a convenience: a failure to read it must not
+		// cost the page, least of all the error page.
+		if counts, err := s.store.PendingDrafts(r.Context()); err == nil {
+			pd.Drafts = counts.Total()
+		} else {
+			s.log.Warn("could not count drafts for the menu", "error", err, "request_id", requestID(r.Context()))
+		}
 	}
 	return s.renderPage(w, status, page, pd)
 }

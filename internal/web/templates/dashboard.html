@@ -8,8 +8,9 @@
 {{if .AnyDrafts}}
 <section class="card draft">
   <h3>Drafts waiting to be finalized</h3>
-  <p>Meetings: {{.Drafts.Meetings}} · Entries: {{.Drafts.Entries}} · Commitments: {{.Drafts.Commitments}} · Tasks: {{.Drafts.WorkItems}}</p>
+  <p>Meetings: {{.Drafts.Meetings}} · Notes: {{.Drafts.Entries}} · Commitments: {{.Drafts.Commitments}} · Tasks: {{.Drafts.WorkItems}}</p>
   <p class="muted">Drafts are not part of the record, reports or metrics until you finalize them.</p>
+  <p><a class="button" href="/drafts">Review and finalize</a></p>
 </section>
 {{end}}
 

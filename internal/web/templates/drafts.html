@@ -1,0 +1,69 @@
+{{define "title"}}Drafts{{end}}
+{{define "content"}}{{with .Data}}
+<h1>Drafts</h1>
+<p class="muted">Drafts are not part of the record, reports or metrics until you finalize them. Tick the ones that are ready and finalize them together. Once finalized, a record can only be voided, never edited.</p>
+{{if .Empty}}
+<p>Nothing is waiting. Everything you wrote is finalized.</p>
+{{else}}
+<form method="post" action="/drafts/finalize">
+  {{template "csrf" $}}
+
+  {{if .Meetings}}
+  <h2>Meetings</h2>
+  <p class="muted">A meeting is finalized with everything noted in it.</p>
+  <table>
+    <tr><th></th><th>When</th><th>Meeting</th><th>About</th><th>Noted in it</th></tr>
+    {{range .Meetings}}<tr>
+      <td><input type="checkbox" name="meeting" value="{{.Meeting.ID}}" aria-label="Select this meeting"></td>
+      <td>{{datetime .Meeting.StartsAt}}</td>
+      <td><a href="/meetings/{{.Meeting.ID}}">{{.KindLabel}}{{if .Meeting.Title}}: {{.Meeting.Title}}{{end}}</a></td>
+      <td>{{.PersonName}}</td>
+      <td>{{.Noted}}</td>
+    </tr>{{end}}
+  </table>
+  {{end}}
+
+  {{if .Entries}}
+  <h2>Notes</h2>
+  <table>
+    <tr><th></th><th>Date</th><th>About</th><th>Note</th></tr>
+    {{range .Entries}}<tr>
+      <td><input type="checkbox" name="entry" value="{{.Entry.ID}}" aria-label="Select this note"></td>
+      <td>{{date .Entry.OccurredAt}}</td>
+      <td><a href="/people/{{.Entry.PersonID}}?tab=notes">{{.PersonName}}</a></td>
+      <td><span class="badge">{{.KindLabel}}</span> {{.Excerpt}} <a href="/entries/{{.Entry.ID}}/edit?back=/drafts">Edit</a></td>
+    </tr>{{end}}
+  </table>
+  {{end}}
+
+  {{if .Commitments}}
+  <h2>Commitments</h2>
+  <table>
+    <tr><th></th><th>About</th><th>What</th><th>Due</th></tr>
+    {{range .Commitments}}<tr>
+      <td><input type="checkbox" name="commitment" value="{{.C.ID}}" aria-label="Select this commitment"></td>
+      <td><a href="/people/{{.C.PersonID}}?tab=commitments">{{.PersonName}}</a></td>
+      <td>{{.C.Content}}{{if .C.Deliverable}}<br><span class="muted">Deliverable: {{.C.Deliverable}}</span>{{end}}</td>
+      <td>{{datePtr .C.DueOn}}</td>
+    </tr>{{end}}
+  </table>
+  {{end}}
+
+  {{if .Work}}
+  <h2>Tasks</h2>
+  <table>
+    <tr><th></th><th>Task</th><th>Person</th><th>Release</th><th>Stretch</th></tr>
+    {{range .Work}}<tr>
+      <td><input type="checkbox" name="task" value="{{.Item.ID}}" aria-label="Select this task"></td>
+      <td><a href="/work/{{.Item.ID}}">{{.Item.Title}}</a></td>
+      <td>{{.PersonName}}</td>
+      <td>{{.ReleaseName}}</td>
+      <td>{{human (print .Item.Stretch)}}</td>
+    </tr>{{end}}
+  </table>
+  {{end}}
+
+  <div class="savebar"><button>Finalize selected</button></div>
+</form>
+{{end}}
+{{end}}{{end}}

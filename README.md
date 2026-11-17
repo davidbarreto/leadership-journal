@@ -35,6 +35,7 @@ Stop the journal, then run `make reset-password` (set `JOURNAL_DATA_DIR` if you 
 - **Improvement journal**: a progress check per person every 14 days by default (configurable with `-progress-days`). The dashboard flags overdue checks and `NO PROGRESS` streaks.
 - **Work**: releases and tasks per person. You record, at assignment, how much of a stretch the task is for that person (below, at or above), who picked it, and why. A release's name, dates and Markdown observations can be edited. Each release shows who has a finalized stretch task. Tasks can be reassigned, keeping the original.
 - **Metrics**: share of stretch tasks picked by the person vs assigned by you, share of tasks with an investigation first, and documentation contributions (finalized notes tagged `documentation`).
+- **Drafts**: one page lists everything not finalized yet (meetings, notes, commitments and tasks), with links to finish each one. Tick the ones that are ready and finalize them together in one transaction. The menu shows how many are waiting.
 - **Search** across notes, meeting notes and answers.
 - **Report for your manager**: finalized records only, of one report, filtered by period, section and kind of note, as a printable page or a Markdown download.
 - **Settings**: add teams, levels (e.g. a QA scale), meeting kinds, entry kinds and minutes questions without touching code. Change the password. Back up the database.

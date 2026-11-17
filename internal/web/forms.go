@@ -24,6 +24,23 @@ func formID(r *http.Request, key string) (int64, error) {
 	return n, nil
 }
 
+// formIDs reads every value of a repeated id field, such as a group of
+// checkboxes.
+func formIDs(r *http.Request, key string) ([]int64, error) {
+	if err := r.ParseForm(); err != nil {
+		return nil, userErrorf("Invalid form")
+	}
+	var ids []int64
+	for _, v := range r.PostForm[key] {
+		n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
+		if err != nil || n <= 0 {
+			return nil, userErrorf("Invalid selection")
+		}
+		ids = append(ids, n)
+	}
+	return ids, nil
+}
+
 // formIDPtr is formID for optional references: nil when nothing was chosen.
 func formIDPtr(r *http.Request, key string) (*int64, error) {
 	n, err := formID(r, key)

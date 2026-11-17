@@ -124,23 +124,25 @@ func explainNoChange(ctx context.Context, q querier, res sql.Result, t table, id
 // finalizeStandalone finalizes an entry or commitment on its own. Rows that
 // belong to a meeting are refused, because they lock together with it.
 func (s *Store) finalizeStandalone(ctx context.Context, t table, id int64) error {
-	return s.withTx(ctx, func(tx *sql.Tx) error {
-		var meeting sql.NullInt64
-		var isDraft bool
-		err := tx.QueryRowContext(ctx,
-			fmt.Sprintf(`SELECT meeting_id, finalized_at IS NULL FROM %s WHERE id = ?`, t), id).Scan(&meeting, &isDraft)
-		if err != nil {
-			return wrapErr(err)
-		}
-		if !isDraft {
-			return ErrNotDraft
-		}
-		if meeting.Valid {
-			return ErrFinalizeWithMeeting
-		}
-		at, tz := formatStamp(s.now())
-		return finalizeRow(ctx, tx, t, id, at, tz)
-	})
+	return s.withTx(ctx, func(tx *sql.Tx) error { return s.finalizeStandaloneIn(ctx, tx, t, id) })
+}
+
+func (s *Store) finalizeStandaloneIn(ctx context.Context, q querier, t table, id int64) error {
+	var meeting sql.NullInt64
+	var isDraft bool
+	err := q.QueryRowContext(ctx,
+		fmt.Sprintf(`SELECT meeting_id, finalized_at IS NULL FROM %s WHERE id = ?`, t), id).Scan(&meeting, &isDraft)
+	if err != nil {
+		return wrapErr(err)
+	}
+	if !isDraft {
+		return ErrNotDraft
+	}
+	if meeting.Valid {
+		return ErrFinalizeWithMeeting
+	}
+	at, tz := formatStamp(s.now())
+	return finalizeRow(ctx, q, t, id, at, tz)
 }
 
 // voidStandalone voids a finalized row.

@@ -92,12 +92,15 @@ func TestPendingDrafts(t *testing.T) {
 	s := newTestStore(t)
 	p := mustCreatePerson(t, s, "Ana", domain.RelationshipReport)
 	r := mustRelease(t, s, "R1")
-	mustMeeting(t, s, p)
+	mid := mustMeeting(t, s, p)
 	e := mustEntry(t, s, newEntry(p, nil, "a"))
 	mustEntry(t, s, newEntry(p, nil, "b"))
 	mustCommitment(t, s, newCommitment(p, nil, "c"))
 	mustWorkItem(t, s, newWorkItem(p, r, "w", ""))
 	s.FinalizeEntry(ctx, e)
+	// Noted in the draft meeting: finalized with it, so not counted apart.
+	mustEntry(t, s, newEntry(p, &mid, "in the meeting"))
+	mustCommitment(t, s, newCommitment(p, &mid, "in the meeting"))
 
 	got, err := s.PendingDrafts(ctx)
 	if err != nil {
@@ -106,6 +109,94 @@ func TestPendingDrafts(t *testing.T) {
 	want := DraftCounts{Meetings: 1, Entries: 1, Commitments: 1, WorkItems: 1}
 	if got != want {
 		t.Errorf("PendingDrafts() = %+v, want %+v", got, want)
+	}
+	if got.Total() != 4 {
+		t.Errorf("Total() = %d, want 4", got.Total())
+	}
+}
+
+func TestListDrafts(t *testing.T) {
+	s := newTestStore(t)
+	p := mustCreatePerson(t, s, "Ana", domain.RelationshipReport)
+	r := mustRelease(t, s, "R1")
+	mid := mustMeeting(t, s, p)
+	done := mustMeeting(t, s, p)
+	mustEntry(t, s, newEntry(p, &mid, "in the meeting"))
+	mustCommitment(t, s, newCommitment(p, &mid, "in the meeting"))
+	mustEntry(t, s, newEntry(p, nil, "standalone"))
+	locked := mustEntry(t, s, newEntry(p, nil, "locked"))
+	mustCommitment(t, s, newCommitment(p, nil, "promise"))
+	mustWorkItem(t, s, newWorkItem(p, r, "task", ""))
+	s.FinalizeEntry(ctx, locked)
+	s.FinalizeMeeting(ctx, done)
+
+	d, err := s.ListDrafts(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(d.Meetings) != 1 || d.Meetings[0].ID != mid || d.InMeeting[mid] != 2 {
+		t.Errorf("meetings = %+v, in meeting = %v, want the draft one holding 2 records", d.Meetings, d.InMeeting)
+	}
+	if len(d.Entries) != 1 || d.Entries[0].Body != "standalone" {
+		t.Errorf("entries = %+v, want only the standalone draft", d.Entries)
+	}
+	if len(d.Commitments) != 1 || d.Commitments[0].Content != "promise" || len(d.WorkItems) != 1 {
+		t.Errorf("commitments = %+v, work items = %+v, want one each", d.Commitments, d.WorkItems)
+	}
+}
+
+func TestFinalizeDrafts_LocksTheSelection(t *testing.T) {
+	s := newTestStore(t)
+	p := mustCreatePerson(t, s, "Ana", domain.RelationshipReport)
+	r := mustRelease(t, s, "R1")
+	mid := mustMeeting(t, s, p)
+	inMeeting := mustEntry(t, s, newEntry(p, &mid, "in the meeting"))
+	chosen := mustEntry(t, s, newEntry(p, nil, "chosen"))
+	left := mustEntry(t, s, newEntry(p, nil, "left alone"))
+	cid := mustCommitment(t, s, newCommitment(p, nil, "promise"))
+	wid := mustWorkItem(t, s, newWorkItem(p, r, "task", ""))
+
+	sel := DraftSelection{Meetings: []int64{mid}, Entries: []int64{chosen}, Commitments: []int64{cid}, WorkItems: []int64{wid}}
+	if err := s.FinalizeDrafts(ctx, sel); err != nil {
+		t.Fatal(err)
+	}
+	m, _ := s.GetMeeting(ctx, mid)
+	e1, _ := s.GetEntry(ctx, inMeeting)
+	e2, _ := s.GetEntry(ctx, chosen)
+	e3, _ := s.GetEntry(ctx, left)
+	c, _ := s.GetCommitment(ctx, cid)
+	w, _ := s.GetWorkItem(ctx, wid)
+	if !m.IsFinalized() || !e1.IsFinalized() || !e2.IsFinalized() || !c.IsFinalized() || !w.IsFinalized() {
+		t.Errorf("meeting %v, its entry %v, entry %v, commitment %v, task %v: want all finalized",
+			m.IsFinalized(), e1.IsFinalized(), e2.IsFinalized(), c.IsFinalized(), w.IsFinalized())
+	}
+	if !e3.IsDraft() {
+		t.Error("an entry that was not selected was finalized")
+	}
+}
+
+func TestFinalizeDrafts_IsAllOrNothing(t *testing.T) {
+	s := newTestStore(t)
+	p := mustCreatePerson(t, s, "Ana", domain.RelationshipReport)
+	mid := mustMeeting(t, s, p)
+	fresh := mustEntry(t, s, newEntry(p, nil, "fresh"))
+	already := mustEntry(t, s, newEntry(p, nil, "already locked"))
+	s.FinalizeEntry(ctx, already)
+
+	err := s.FinalizeDrafts(ctx, DraftSelection{Meetings: []int64{mid}, Entries: []int64{fresh, already}})
+	if !errors.Is(err, ErrNotDraft) {
+		t.Fatalf("error = %v, want ErrNotDraft", err)
+	}
+	m, _ := s.GetMeeting(ctx, mid)
+	e, _ := s.GetEntry(ctx, fresh)
+	if !m.IsDraft() || !e.IsDraft() {
+		t.Error("a failed batch must finalize nothing")
+	}
+
+	// An entry noted in a meeting is finalized with it, never on its own.
+	inMeeting := mustEntry(t, s, newEntry(p, &mid, "in the meeting"))
+	if err := s.FinalizeDrafts(ctx, DraftSelection{Entries: []int64{inMeeting}}); !errors.Is(err, ErrFinalizeWithMeeting) {
+		t.Errorf("error = %v, want ErrFinalizeWithMeeting", err)
 	}
 }
 

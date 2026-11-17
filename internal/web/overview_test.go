@@ -101,7 +101,7 @@ func TestSearch(t *testing.T) {
 
 	page := c.get("/search?q=outage")
 	mustStatus(t, page, http.StatusOK)
-	mustContain(t, page, "<mark>outage</mark>", "/people/"+id(pid), "/meetings/"+id(mid), "Draft")
+	mustContain(t, page, "<mark>outage</mark>", "/people/"+id(pid), "/meetings/"+id(mid), `<span class="badge">Draft</span>`)
 	mustNotContain(t, page, "<script>alert")
 	mustContain(t, page, "&lt;script&gt;alert(1)&lt;/script&gt;")
 

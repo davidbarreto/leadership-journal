@@ -185,7 +185,7 @@ func TestMeeting_FullLifecycle(t *testing.T) {
 	mustStatus(t, rec, http.StatusSeeOther)
 	page = c.get(url1)
 	mustContain(t, page, "Finalized", "Go interfaces", "Led the incident review", "<strong>migration</strong>")
-	mustNotContain(t, page, `<textarea name="notes"`, "Save and finalize", "Draft")
+	mustNotContain(t, page, `<textarea name="notes"`, "Save and finalize", `badge">Draft</span>`)
 
 	// Locked: edits and deletion are refused with a clear message.
 	c.post(url1, url.Values{"title": {"x"}, "starts_at": {"2024-03-05T14:00"}, "notes": {"rewritten"}, "back": {url1}})
