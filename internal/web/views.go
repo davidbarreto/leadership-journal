@@ -25,25 +25,22 @@ type commitmentView struct {
 	CSRF       string
 }
 
-// entryFormData and commitmentFormData feed the "add" form partials. When
-// PersonID is 0 the form asks which person it is about.
+// entryFormData and commitmentFormData feed the person page's "add" form
+// partials. Notes and commitments made in a meeting use the meeting's own
+// form instead.
 type entryFormData struct {
-	PersonID  int64
-	MeetingID int64
-	People    []domain.Person
-	Kinds     []domain.EntryKind
-	Tags      []string
-	Today     string
-	Back      string
-	CSRF      string
+	PersonID int64
+	Kinds    []domain.EntryKind
+	Tags     []string
+	Today    string
+	Back     string
+	CSRF     string
 }
 
 type commitmentFormData struct {
-	PersonID  int64
-	MeetingID int64
-	People    []domain.Person
-	Back      string
-	CSRF      string
+	PersonID int64
+	Back     string
+	CSRF     string
 }
 
 // taskFormData feeds the task form partial, used to add a task or edit a
