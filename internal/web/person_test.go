@@ -200,3 +200,15 @@ func TestPerson_AddATaskFromTheWorkTab(t *testing.T) {
 	// Managers do not get tasks.
 	mustNotContain(t, c.get("/people/"+id(boss)+"?tab=work"), `action="/work"`, "Add a release on the")
 }
+
+func TestPerson_WorkTabShowsTheTicket(t *testing.T) {
+	env := newEnv(t)
+	c := env.loggedIn()
+	ana := c.createPerson(t, "Ana", "report")
+	c.post("/releases", url.Values{"name": {"R24.1"}, "starts_on": {"2024-01-01"}, "ends_on": {"2024-03-31"}})
+	c.createWorkItem(t, 1, ana, "Migrate billing job", "BILL-482", "above")
+	c.createWorkItem(t, 1, ana, "Pair on alerts", "", "at")
+
+	page := c.get("/people/" + id(ana) + "?tab=work")
+	mustContain(t, page, "<th>Ticket</th>", "<td>BILL-482</td>", "Pair on alerts")
+}
