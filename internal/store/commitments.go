@@ -31,26 +31,33 @@ func scanCommitment(r scanner) (domain.Commitment, error) {
 // CreateCommitment stores a draft commitment. Its status log starts with an
 // open event; the Status field of the argument is ignored.
 func (s *Store) CreateCommitment(ctx context.Context, c domain.Commitment) (int64, error) {
+	var id int64
+	err := s.withTx(ctx, func(tx *sql.Tx) error {
+		var err error
+		id, err = s.insertCommitment(ctx, tx, c)
+		return err
+	})
+	return id, err
+}
+
+func (s *Store) insertCommitment(ctx context.Context, q querier, c domain.Commitment) (int64, error) {
 	c.Status = domain.CommitmentOpen
 	if err := c.Validate(); err != nil {
 		return 0, err
 	}
-	var id int64
-	err := s.withTx(ctx, func(tx *sql.Tx) error {
-		at, tz := formatStamp(s.now())
-		res, err := tx.ExecContext(ctx,
-			`INSERT INTO commitment (person_id, meeting_id, kind, direction, content, deliverable, due_on, created_at, created_tz)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			c.PersonID, nullInt(c.MeetingID), c.Kind, c.Direction, c.Content, c.Deliverable, nullDate(c.DueOn), at, tz)
-		if err != nil {
-			return wrapErr(err)
-		}
-		if id, err = res.LastInsertId(); err != nil {
-			return err
-		}
-		return addCommitmentEvent(ctx, tx, id, domain.CommitmentOpen, "", at, tz)
-	})
-	return id, err
+	at, tz := formatStamp(s.now())
+	res, err := q.ExecContext(ctx,
+		`INSERT INTO commitment (person_id, meeting_id, kind, direction, content, deliverable, due_on, created_at, created_tz)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		c.PersonID, nullInt(c.MeetingID), c.Kind, c.Direction, c.Content, c.Deliverable, nullDate(c.DueOn), at, tz)
+	if err != nil {
+		return 0, wrapErr(err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return id, addCommitmentEvent(ctx, q, id, domain.CommitmentOpen, "", at, tz)
 }
 
 func addCommitmentEvent(ctx context.Context, q querier, id int64, status domain.CommitmentStatus, note, at, tz string) error {

@@ -8,7 +8,10 @@
 {{if .Meeting.IsVoided}}<p class="flash error">Voided: {{.Meeting.VoidReason}}</p>{{end}}
 
 {{if .Editable}}
-<form method="post" action="/meetings/{{.Meeting.ID}}">
+{{/* One form for the whole page. The new note and commitment fields below
+     the lists join it through their form attribute, because the lists hold
+     forms of their own and forms cannot nest. */}}
+<form id="meeting-form" method="post" action="/meetings/{{.Meeting.ID}}">
   {{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}">
   <div class="row">
     <label>Title <input type="text" name="title" value="{{.Meeting.Title}}"></label>
@@ -22,7 +25,6 @@
   <label>{{.Text}} <textarea name="answer_{{.Key}}" rows="3">{{.Value}}</textarea></label>
   {{end}}
   <label>Notes (Markdown) <textarea name="notes" rows="8">{{.Meeting.Notes}}</textarea></label>
-  <button type="submit">Save draft</button>
 </form>
 {{else}}
   {{range .Answers}}<h3>{{.PromptText}}</h3><div class="prose">{{md .Text}}</div>{{end}}
@@ -31,19 +33,66 @@
 
 <h2>Noted in this meeting</h2>
 {{range .Entries}}{{template "entry" .}}{{else}}<p class="muted">No notes yet.</p>{{end}}
-{{if .Editable}}{{template "entryForm" .EntryForm}}{{end}}
+{{if .Editable}}{{with .NewNote}}
+<fieldset class="card noprint">
+  <legend>New note</legend>
+  {{if not $.Data.Meeting.PersonID}}
+  <label>About <select name="note_person_id" form="meeting-form"><option value="">Choose a person…</option>
+    {{range $.Data.People}}<option value="{{.ID}}"{{if eq (print .ID) $.Data.NewNote.PersonID}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+  {{end}}
+  <div class="row">
+    <label>Kind <select name="note_kind" form="meeting-form">{{range $.Data.EntryKinds}}<option value="{{.Code}}"{{if eq .Code $.Data.NewNote.Kind}} selected{{end}}>{{.Label}}</option>{{end}}</select></label>
+    <label>Outcome (progress checks only)
+      <select name="note_outcome" form="meeting-form">
+        <option value="">–</option>
+        <option value="progress"{{if eq .Outcome "progress"}} selected{{end}}>Progress</option>
+        <option value="no_progress"{{if eq .Outcome "no_progress"}} selected{{end}}>No progress</option>
+        <option value="pending"{{if eq .Outcome "pending"}} selected{{end}}>Pending</option>
+      </select></label>
+  </div>
+  <label>Note (Markdown) <textarea name="note_body" form="meeting-form" rows="4">{{.Body}}</textarea></label>
+  <label>Tags (comma separated) <input type="text" name="note_tags" form="meeting-form" value="{{.Tags}}" list="known-tags" autocomplete="off"></label>
+  <datalist id="known-tags">{{range $.Data.Tags}}<option value="{{.}}">{{end}}</datalist>
+  <p class="muted">Saved with the meeting. Leave it empty to add no note.</p>
+</fieldset>
+{{end}}{{end}}
 
 <h2>Commitments and action items</h2>
 {{range .Commitments}}{{template "commitment" .}}{{else}}<p class="muted">None yet.</p>{{end}}
-{{if .Editable}}{{template "commitmentForm" .CommitForm}}{{end}}
+{{if .Editable}}{{with .NewCommitment}}
+<fieldset class="card noprint">
+  <legend>New commitment</legend>
+  {{if not $.Data.Meeting.PersonID}}
+  <label>About <select name="c_person_id" form="meeting-form"><option value="">Choose a person…</option>
+    {{range $.Data.People}}<option value="{{.ID}}"{{if eq (print .ID) $.Data.NewCommitment.PersonID}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+  {{end}}
+  <div class="row">
+    <label>Kind <select name="c_kind" form="meeting-form">
+      <option value="task"{{if eq .Kind "task"}} selected{{end}}>Task</option>
+      <option value="learning"{{if eq .Kind "learning"}} selected{{end}}>Learning goal</option></select></label>
+    <label>Direction <select name="c_direction" form="meeting-form">
+      <option value="they_owe_me"{{if eq .Direction "they_owe_me"}} selected{{end}}>They owe me</option>
+      <option value="i_owe_them"{{if eq .Direction "i_owe_them"}} selected{{end}}>I owe them</option></select></label>
+    <label>Due <input type="date" name="c_due_on" form="meeting-form" value="{{.DueOn}}"></label>
+  </div>
+  <label>What <input type="text" name="c_content" form="meeting-form" value="{{.Content}}"></label>
+  <label>Deliverable (required for learning goals: a demo or presentation, not "I read it") <input type="text" name="c_deliverable" form="meeting-form" value="{{.Deliverable}}"></label>
+  <p class="muted">Saved with the meeting. Leave it empty to add no commitment.</p>
+</fieldset>
+{{end}}{{end}}
 
+{{if .Editable}}
+{{/* A direct child of main, so it stays in view while scrolling the page. */}}
+<div class="savebar noprint">
+  <button form="meeting-form">Save draft</button>
+  <button form="meeting-form" name="then" value="finalize" class="secondary">Save and finalize</button>
+</div>
+{{end}}
 <div class="noprint">
 {{if .Editable}}
-  <form method="post" action="/meetings/{{.Meeting.ID}}/finalize" class="inline">{{template "csrf" .}}
-    <button>Finalize meeting</button></form>
+  <p class="muted">Finalizing locks the meeting and everything noted in it. A locked record can later be voided, with a reason, but never edited or deleted.</p>
   <form method="post" action="/meetings/{{.Meeting.ID}}/delete" class="inline">{{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}">
     <button class="danger">Delete this draft</button></form>
-  <p class="muted">Finalizing locks the meeting and everything noted in it. A locked record can later be voided, with a reason, but never edited or deleted.</p>
 {{else if not .Meeting.IsVoided}}
   <details><summary>Void this meeting</summary>
     <form method="post" action="/meetings/{{.Meeting.ID}}/void">{{template "csrf" .}}<input type="hidden" name="back" value="{{.Back}}">

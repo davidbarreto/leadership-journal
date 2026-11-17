@@ -45,29 +45,36 @@ func scanEntry(r scanner) (domain.Entry, error) {
 func (s *Store) CreateEntry(ctx context.Context, e domain.Entry) (int64, error) {
 	var id int64
 	err := s.withTx(ctx, func(tx *sql.Tx) error {
-		kind, err := getEntryKind(ctx, tx, e.Kind)
-		if err != nil {
-			return err
-		}
-		if err := e.Validate(kind); err != nil {
-			return err
-		}
-		at, tz := formatStamp(s.now())
-		occurredAt, occurredTZ := formatStamp(e.OccurredAt)
-		res, err := tx.ExecContext(ctx,
-			`INSERT INTO entry (person_id, meeting_id, kind, body, outcome, occurred_at, occurred_tz, corrects_entry_id, created_at, created_tz)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			e.PersonID, nullInt(e.MeetingID), e.Kind, e.Body, nullText(string(e.Outcome)), occurredAt, occurredTZ,
-			nullInt(e.CorrectsID), at, tz)
-		if err != nil {
-			return wrapErr(err)
-		}
-		if id, err = res.LastInsertId(); err != nil {
-			return err
-		}
-		return setEntryTags(ctx, tx, id, e.Tags)
+		var err error
+		id, err = s.insertEntry(ctx, tx, e)
+		return err
 	})
 	return id, err
+}
+
+func (s *Store) insertEntry(ctx context.Context, q querier, e domain.Entry) (int64, error) {
+	kind, err := getEntryKind(ctx, q, e.Kind)
+	if err != nil {
+		return 0, err
+	}
+	if err := e.Validate(kind); err != nil {
+		return 0, err
+	}
+	at, tz := formatStamp(s.now())
+	occurredAt, occurredTZ := formatStamp(e.OccurredAt)
+	res, err := q.ExecContext(ctx,
+		`INSERT INTO entry (person_id, meeting_id, kind, body, outcome, occurred_at, occurred_tz, corrects_entry_id, created_at, created_tz)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		e.PersonID, nullInt(e.MeetingID), e.Kind, e.Body, nullText(string(e.Outcome)), occurredAt, occurredTZ,
+		nullInt(e.CorrectsID), at, tz)
+	if err != nil {
+		return 0, wrapErr(err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return id, setEntryTags(ctx, q, id, e.Tags)
 }
 
 func setEntryTags(ctx context.Context, q querier, entryID int64, names []string) error {

@@ -140,11 +140,16 @@ type pageData struct {
 // render shows a page inside the layout. The page is rendered to a buffer
 // first so a template error cannot leave a half-written response.
 func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, page, active string, data any) error {
-	pd := pageData{Active: active, Now: s.now(), Data: data}
+	return s.renderFlash(w, r, status, page, active, data, s.takeFlash(w, r))
+}
+
+// renderFlash is render with a message decided while handling this request,
+// rather than one carried over from a redirect.
+func (s *Server) renderFlash(w http.ResponseWriter, r *http.Request, status int, page, active string, data any, f *flash) error {
+	pd := pageData{Active: active, Now: s.now(), Data: data, Flash: f}
 	if sess, ok := sessionFromContext(r.Context()); ok {
 		pd.Authed, pd.CSRF = true, sess.CSRFToken
 	}
-	pd.Flash = s.takeFlash(w, r)
 	return s.renderPage(w, status, page, pd)
 }
 

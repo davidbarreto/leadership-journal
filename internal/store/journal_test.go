@@ -565,3 +565,72 @@ func TestProgressChecks(t *testing.T) {
 		t.Errorf("streak = %d, want 2", domain.ConsecutiveNoProgress(outcomes))
 	}
 }
+
+func TestSaveMeeting_SavesEverythingTogether(t *testing.T) {
+	s := newTestStore(t)
+	p := mustCreatePerson(t, s, "Ana", domain.RelationshipReport)
+	mid := mustMeeting(t, s, p)
+	m, _ := s.GetMeeting(ctx, mid)
+	m.Notes = "Updated notes"
+	m.Answers = []domain.Answer{{PromptKey: "learned", PromptText: "What did you learn?", Text: "Channels"}}
+	e := newEntry(p, nil, "Led the review")
+	c := newCommitment(p, nil, "Write the runbook")
+
+	if err := s.SaveMeeting(ctx, MeetingSave{Meeting: m, NewEntry: &e, NewCommitment: &c}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := s.GetMeeting(ctx, mid)
+	if got.Notes != "Updated notes" || len(got.Answers) != 1 || got.Answers[0].Text != "Channels" || !got.IsDraft() {
+		t.Errorf("meeting = %+v, want the new notes and answer, still a draft", got)
+	}
+	entries, _ := s.ListEntries(ctx, EntryFilter{MeetingID: &mid})
+	commitments, _ := s.ListCommitments(ctx, CommitmentFilter{MeetingID: &mid})
+	if len(entries) != 1 || entries[0].Body != "Led the review" || len(commitments) != 1 || commitments[0].Content != "Write the runbook" {
+		t.Fatalf("entries = %+v, commitments = %+v, want one of each in the meeting", entries, commitments)
+	}
+	// What is noted in a meeting happened when the meeting did.
+	if !entries[0].OccurredAt.Equal(m.StartsAt) {
+		t.Errorf("entry occurred at %v, want the meeting start %v", entries[0].OccurredAt, m.StartsAt)
+	}
+}
+
+func TestSaveMeeting_IsAllOrNothing(t *testing.T) {
+	s := newTestStore(t)
+	p := mustCreatePerson(t, s, "Ana", domain.RelationshipReport)
+	mid := mustMeeting(t, s, p)
+	m, _ := s.GetMeeting(ctx, mid)
+	m.Notes = "Should not be kept"
+	e := newEntry(p, nil, "Should not be kept either")
+	bad := newCommitment(p, nil, "Learn Kubernetes")
+	bad.Kind = domain.CommitmentLearning // no deliverable: invalid
+
+	err := s.SaveMeeting(ctx, MeetingSave{Meeting: m, NewEntry: &e, NewCommitment: &bad, Finalize: true})
+	if !domain.IsValidation(err) {
+		t.Fatalf("error = %v, want a validation error", err)
+	}
+	got, _ := s.GetMeeting(ctx, mid)
+	entries, _ := s.ListEntries(ctx, EntryFilter{MeetingID: &mid})
+	if got.Notes == "Should not be kept" || len(entries) != 0 || !got.IsDraft() {
+		t.Errorf("meeting notes = %q, entries = %d, draft = %v: a failed save must change nothing", got.Notes, len(entries), got.IsDraft())
+	}
+}
+
+func TestSaveMeeting_FinalizeLocksTheNewRowsToo(t *testing.T) {
+	s := newTestStore(t)
+	p := mustCreatePerson(t, s, "Ana", domain.RelationshipReport)
+	mid := mustMeeting(t, s, p)
+	m, _ := s.GetMeeting(ctx, mid)
+	e := newEntry(p, nil, "Led the review")
+
+	if err := s.SaveMeeting(ctx, MeetingSave{Meeting: m, NewEntry: &e, Finalize: true}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := s.GetMeeting(ctx, mid)
+	entries, _ := s.ListEntries(ctx, EntryFilter{MeetingID: &mid})
+	if !got.IsFinalized() || len(entries) != 1 || !entries[0].IsFinalized() {
+		t.Errorf("meeting finalized = %v, entries = %+v, want all locked", got.IsFinalized(), entries)
+	}
+	if err := s.SaveMeeting(ctx, MeetingSave{Meeting: got}); !errors.Is(err, ErrNotDraft) {
+		t.Errorf("saving a finalized meeting error = %v, want ErrNotDraft", err)
+	}
+}

@@ -72,27 +72,69 @@ func insertAnswers(ctx context.Context, q querier, meetingID int64, answers []do
 
 // UpdateMeeting rewrites a draft meeting, replacing its answers.
 func (s *Store) UpdateMeeting(ctx context.Context, m domain.Meeting) error {
+	return s.withTx(ctx, func(tx *sql.Tx) error { return updateMeeting(ctx, tx, m) })
+}
+
+func updateMeeting(ctx context.Context, q querier, m domain.Meeting) error {
+	if err := requireDraft(ctx, q, tableMeeting, m.ID); err != nil {
+		return err
+	}
+	kind, err := getMeetingKind(ctx, q, m.Kind)
+	if err != nil {
+		return err
+	}
+	if err := m.Validate(kind); err != nil {
+		return err
+	}
+	startsAt, startsTZ := formatStamp(m.StartsAt)
+	if _, err := q.ExecContext(ctx,
+		`UPDATE meeting SET kind = ?, title = ?, person_id = ?, team_id = ?, starts_at = ?, starts_tz = ?, notes = ? WHERE id = ?`,
+		m.Kind, m.Title, nullInt(m.PersonID), nullInt(m.TeamID), startsAt, startsTZ, m.Notes, m.ID); err != nil {
+		return wrapErr(err)
+	}
+	if _, err := q.ExecContext(ctx, `DELETE FROM meeting_answer WHERE meeting_id = ?`, m.ID); err != nil {
+		return wrapErr(err)
+	}
+	return insertAnswers(ctx, q, m.ID, m.Answers)
+}
+
+// MeetingSave is one save of a draft meeting from its page: the meeting
+// itself, optionally a new entry and a new commitment noted in it, and
+// whether to finalize it all afterwards.
+type MeetingSave struct {
+	Meeting       domain.Meeting
+	NewEntry      *domain.Entry
+	NewCommitment *domain.Commitment
+	Finalize      bool
+}
+
+// SaveMeeting applies a MeetingSave in one transaction, so a mistake anywhere
+// saves nothing. The new entry and commitment belong to the meeting, and the
+// entry happened when the meeting did.
+func (s *Store) SaveMeeting(ctx context.Context, ms MeetingSave) error {
+	m := ms.Meeting
 	return s.withTx(ctx, func(tx *sql.Tx) error {
-		if err := requireDraft(ctx, tx, tableMeeting, m.ID); err != nil {
+		if err := updateMeeting(ctx, tx, m); err != nil {
 			return err
 		}
-		kind, err := getMeetingKind(ctx, tx, m.Kind)
-		if err != nil {
-			return err
+		if ms.NewEntry != nil {
+			e := *ms.NewEntry
+			e.MeetingID, e.OccurredAt = &m.ID, m.StartsAt
+			if _, err := s.insertEntry(ctx, tx, e); err != nil {
+				return err
+			}
 		}
-		if err := m.Validate(kind); err != nil {
-			return err
+		if ms.NewCommitment != nil {
+			c := *ms.NewCommitment
+			c.MeetingID = &m.ID
+			if _, err := s.insertCommitment(ctx, tx, c); err != nil {
+				return err
+			}
 		}
-		startsAt, startsTZ := formatStamp(m.StartsAt)
-		if _, err := tx.ExecContext(ctx,
-			`UPDATE meeting SET kind = ?, title = ?, person_id = ?, team_id = ?, starts_at = ?, starts_tz = ?, notes = ? WHERE id = ?`,
-			m.Kind, m.Title, nullInt(m.PersonID), nullInt(m.TeamID), startsAt, startsTZ, m.Notes, m.ID); err != nil {
-			return wrapErr(err)
+		if ms.Finalize {
+			return s.finalizeMeeting(ctx, tx, m.ID)
 		}
-		if _, err := tx.ExecContext(ctx, `DELETE FROM meeting_answer WHERE meeting_id = ?`, m.ID); err != nil {
-			return wrapErr(err)
-		}
-		return insertAnswers(ctx, tx, m.ID, m.Answers)
+		return nil
 	})
 }
 
@@ -134,20 +176,22 @@ func (s *Store) ListMeetings(ctx context.Context, f MeetingFilter) ([]domain.Mee
 // FinalizeMeeting locks a draft meeting together with the answers, entries and
 // commitments created in it.
 func (s *Store) FinalizeMeeting(ctx context.Context, id int64) error {
-	return s.withTx(ctx, func(tx *sql.Tx) error {
-		at, tz := formatStamp(s.now())
-		if err := finalizeRow(ctx, tx, tableMeeting, id, at, tz); err != nil {
-			return err
+	return s.withTx(ctx, func(tx *sql.Tx) error { return s.finalizeMeeting(ctx, tx, id) })
+}
+
+func (s *Store) finalizeMeeting(ctx context.Context, q querier, id int64) error {
+	at, tz := formatStamp(s.now())
+	if err := finalizeRow(ctx, q, tableMeeting, id, at, tz); err != nil {
+		return err
+	}
+	for _, t := range []table{tableEntry, tableCommitment} {
+		if _, err := q.ExecContext(ctx,
+			`UPDATE `+string(t)+` SET finalized_at = ?, finalized_tz = ? WHERE meeting_id = ? AND finalized_at IS NULL`,
+			at, tz, id); err != nil {
+			return wrapErr(err)
 		}
-		for _, t := range []table{tableEntry, tableCommitment} {
-			if _, err := tx.ExecContext(ctx,
-				`UPDATE `+string(t)+` SET finalized_at = ?, finalized_tz = ? WHERE meeting_id = ? AND finalized_at IS NULL`,
-				at, tz, id); err != nil {
-				return wrapErr(err)
-			}
-		}
-		return nil
-	})
+	}
+	return nil
 }
 
 // VoidMeeting declares a finalized meeting wrong. Its entries and commitments
