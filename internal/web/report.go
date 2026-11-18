@@ -47,7 +47,6 @@ type reportPage struct {
 	KindOptions      []kindOption
 	Entries          []reportEntry
 	Checks           []domain.Entry
-	NoProgressStreak int
 	Commitments      []domain.Commitment
 	Work             []workRow
 	Metrics          domain.WorkMetrics
@@ -198,14 +197,6 @@ func (s *Server) fillReport(ctx context.Context, page *reportPage, id int64, fro
 			}
 		}
 	}
-	if page.Sections.Progress {
-		outcomes, err := s.store.ProgressOutcomes(ctx, id)
-		if err != nil {
-			return err
-		}
-		page.NoProgressStreak = domain.ConsecutiveNoProgress(outcomes)
-	}
-
 	if page.Sections.Commitments {
 		list, err := s.store.ListCommitments(ctx, store.CommitmentFilter{PersonID: &id, FinalizedOnly: true})
 		if err != nil {

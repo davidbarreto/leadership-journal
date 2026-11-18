@@ -10,7 +10,6 @@
     <td>{{with .Status}}
       {{if .LastOneOnOne}}{{datePtr .LastOneOnOne}}{{else}}None yet{{end}}
       {{if .Overdue}}<span class="badge warn">1:1 overdue</span>{{end}}
-      {{if ge .NoProgressStreak 2}}<span class="badge bad">NO PROGRESS ×{{.NoProgressStreak}}</span>{{end}}
     {{end}}</td>
     <td>{{with .Start}}{{template "startMeeting" .}}{{end}}</td>
   </tr>

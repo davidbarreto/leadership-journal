@@ -19,7 +19,7 @@ type dashboardPage struct {
 }
 
 // dashboard answers "what needs my attention?": drafts waiting to be locked,
-// reports whose 1:1 is overdue or who show no progress, open commitments, and
+// reports whose 1:1 is overdue, open commitments, and
 // who has a stretch task in the running release.
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()

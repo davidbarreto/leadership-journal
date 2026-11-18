@@ -225,9 +225,8 @@ func TestReportStatuses(t *testing.T) {
 	now := day(2024, 6, 15)
 	oneOnOne(onTime, day(2024, 6, 10))
 	oneOnOne(stale, day(2024, 5, 20))
-	// Progress checks no longer decide the cadence, only the streak.
-	check(stale, day(2024, 6, 1), domain.OutcomeNoProgress)
-	check(stale, day(2024, 6, 14), domain.OutcomeNoProgress)
+	// A progress check is not a 1:1.
+	check(stale, day(2024, 6, 14), domain.OutcomeProgress)
 
 	got, err := s.ReportStatuses(ctx, now, domain.DefaultOneOnOneDays)
 	if err != nil {
@@ -240,11 +239,11 @@ func TestReportStatuses(t *testing.T) {
 	for _, pp := range got {
 		byName[pp.Person.Name] = pp
 	}
-	if a := byName["Ana"]; a.Overdue || a.NoProgressStreak != 0 || a.LastOneOnOne == nil {
+	if a := byName["Ana"]; a.Overdue || a.LastOneOnOne == nil {
 		t.Errorf("Ana = %+v, want on time", a)
 	}
-	if b := byName["Bia"]; !b.Overdue || b.NoProgressStreak != 2 {
-		t.Errorf("Bia = %+v, want overdue with a streak of 2", b)
+	if b := byName["Bia"]; !b.Overdue {
+		t.Errorf("Bia = %+v, want overdue", b)
 	}
 	if c := byName["Cris"]; !c.Overdue || c.LastOneOnOne != nil {
 		t.Errorf("Cris = %+v, want overdue (never met)", c)

@@ -84,8 +84,10 @@ func TestDashboard_ShowsWhatNeedsAttention(t *testing.T) {
 	page := c.get("/")
 	mustStatus(t, page, http.StatusOK)
 
-	// 1:1s: Ana on time, Bia (never met) and Cris overdue, Cris on a streak.
-	mustContain(t, page, "<h2>1:1s</h2>", "due every 15 days", "NO PROGRESS ×2", "None yet")
+	// 1:1s: Ana on time, Bia (never met) and Cris overdue. Progress checks
+	// are recorded whenever the owner wants, so no-progress runs are not flagged.
+	mustContain(t, page, "<h2>1:1s</h2>", "due every 15 days", "None yet")
+	mustNotContain(t, page, "NO PROGRESS")
 	if n := strings.Count(page.Body.String(), `badge warn">Overdue</span>`); n != 2 {
 		t.Errorf("overdue 1:1 badges = %d, want 2 (Bia and Cris)", n)
 	}
@@ -303,4 +305,23 @@ func TestPeople_FlagOnlyReportsWithoutARecentOneOnOne(t *testing.T) {
 	if n := strings.Count(list.Body.String(), "1:1 overdue"); n != 1 {
 		t.Errorf("overdue badges on the people list = %d, want 1 (Bia)", n)
 	}
+}
+
+func TestProgressChecks_AreReportedButNeverFlagged(t *testing.T) {
+	env := newEnv(t)
+	c := env.loggedIn()
+	ana := c.createPerson(t, "Ana", "report")
+	env.finalizedOneOnOne(t, ana, env.now.AddDate(0, 0, -1))
+	env.finalizedCheck(t, ana, day(2024, 1, 10), domain.OutcomeNoProgress, "Nothing applied yet")
+	env.finalizedCheck(t, ana, day(2024, 2, 20), domain.OutcomeNoProgress, "Still nothing applied")
+
+	for _, path := range []string{"/", "/people", "/people/" + id(ana)} {
+		mustNotContain(t, c.get(path), "NO PROGRESS", "in a row")
+	}
+	report := c.get("/people/" + id(ana) + "/report")
+	mustContain(t, report, "Improvement journal", "Nothing applied yet", "Still nothing applied")
+	mustNotContain(t, report, "in a row")
+	md := c.get("/people/" + id(ana) + "/report?format=md")
+	mustContain(t, md, "## Improvement journal", "Still nothing applied")
+	mustNotContain(t, md, "in a row")
 }

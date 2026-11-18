@@ -181,20 +181,3 @@ func (s *Store) DeleteDraftEntry(ctx context.Context, id int64) error {
 		return deleteDraftRow(ctx, tx, tableEntry, id)
 	})
 }
-
-// progressChecks selects the finalized, non-voided entries of kinds that carry
-// an outcome: those are the improvement-journal checks. The kind decides this
-// through its requires_outcome flag, never through a hard-coded code.
-const progressChecks = `FROM entry e JOIN entry_kind k ON k.code = e.kind
-	WHERE e.person_id = ? AND k.requires_outcome = 1 AND e.finalized_at IS NOT NULL AND e.voided_at IS NULL
-	ORDER BY e.occurred_at DESC, e.id DESC`
-
-// ProgressOutcomes returns the outcomes of the person's finalized progress
-// checks, newest first.
-func (s *Store) ProgressOutcomes(ctx context.Context, personID int64) ([]domain.Outcome, error) {
-	return queryAll(ctx, s.db, func(r *sql.Rows) (domain.Outcome, error) {
-		var o string
-		err := r.Scan(&o)
-		return domain.Outcome(o), err
-	}, `SELECT e.outcome `+progressChecks, personID)
-}

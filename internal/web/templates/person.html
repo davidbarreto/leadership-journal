@@ -8,7 +8,6 @@
 <p>
   {{if .LastOneOnOne}}Last 1:1: {{datePtr .LastOneOnOne}}{{else}}No 1:1 yet.{{end}}
   {{if .Overdue}}<span class="badge warn">1:1 overdue: due every {{.IntervalDays}} days</span>{{end}}
-  {{if ge .NoProgressStreak 2}}<span class="badge bad">NO PROGRESS ×{{.NoProgressStreak}} in a row</span>{{end}}
 </p>
 {{end}}
 <p class="noprint quick">

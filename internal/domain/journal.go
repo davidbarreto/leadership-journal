@@ -277,16 +277,3 @@ func OneOnOneOverdue(last *time.Time, now time.Time, intervalDays int) bool {
 	days := int(dateOnly(now).Sub(dateOnly(*last)).Hours() / 24)
 	return days > intervalDays
 }
-
-// ConsecutiveNoProgress counts the leading no_progress outcomes of a list
-// ordered newest first. Any other outcome ends the streak.
-func ConsecutiveNoProgress(newestFirst []Outcome) int {
-	n := 0
-	for _, o := range newestFirst {
-		if o != OutcomeNoProgress {
-			break
-		}
-		n++
-	}
-	return n
-}

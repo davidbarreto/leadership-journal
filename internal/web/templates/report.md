@@ -5,9 +5,7 @@
 Prepared on {{date .Generated}}{{if .HasPeriod}}. Period:{{if .FromInput}} from {{.FromInput}}{{end}}{{if .ToInput}} to {{.ToInput}}{{end}}{{end}}. This report contains only finalized records.
 {{if .Sections.Progress}}
 ## Improvement journal
-{{if .NoProgressStreak}}
-**{{.NoProgressStreak}} progress check(s) in a row without progress.**
-{{end}}{{range .Checks}}
+{{range .Checks}}
 ### {{date .OccurredAt}} · {{human (print .Outcome)}}
 
 {{.Body}}

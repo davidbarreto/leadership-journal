@@ -29,7 +29,6 @@
 
 {{if .Sections.Progress}}
 <h2>Improvement journal</h2>
-{{if .NoProgressStreak}}<p><span class="badge bad">{{.NoProgressStreak}} progress check(s) in a row without progress</span></p>{{end}}
 {{range .Checks}}
 <div class="card"><div class="meta">{{date .OccurredAt}} · <span class="badge {{if eq .Outcome "progress"}}ok{{else if eq .Outcome "no_progress"}}bad{{else}}warn{{end}}">{{human (print .Outcome)}}</span></div>
 <div class="prose">{{md .Body}}</div></div>

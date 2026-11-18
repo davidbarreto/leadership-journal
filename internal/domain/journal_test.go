@@ -180,25 +180,3 @@ func TestOneOnOneOverdue_CustomInterval(t *testing.T) {
 		t.Error("14 days ago must be on time with a 30-day interval")
 	}
 }
-
-func TestConsecutiveNoProgress(t *testing.T) {
-	np, p, pend := OutcomeNoProgress, OutcomeProgress, OutcomePending
-	tests := []struct {
-		name string
-		in   []Outcome // newest first
-		want int
-	}{
-		{name: "no checks", in: nil, want: 0},
-		{name: "latest is progress", in: []Outcome{p, np, np}, want: 0},
-		{name: "two in a row", in: []Outcome{np, np, p, np}, want: 2},
-		{name: "pending breaks the streak", in: []Outcome{np, pend, np}, want: 1},
-		{name: "all no progress", in: []Outcome{np, np, np}, want: 3},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := ConsecutiveNoProgress(tc.in); got != tc.want {
-				t.Errorf("ConsecutiveNoProgress() = %d, want %d", got, tc.want)
-			}
-		})
-	}
-}

@@ -10,15 +10,13 @@ import (
 	"leadership-journal/internal/domain"
 )
 
-// ReportStatus is what needs watching about one report: the 1:1 cadence and
-// any run of progress checks without progress.
+// ReportStatus is the 1:1 cadence of one report.
 type ReportStatus struct {
 	Person       domain.Person
 	LastOneOnOne *time.Time
 	// Overdue means the last 1:1 is more than IntervalDays ago, or there is none.
-	Overdue          bool
-	IntervalDays     int
-	NoProgressStreak int
+	Overdue      bool
+	IntervalDays int
 }
 
 // ReportStatusOf computes the status of one report as of now.
@@ -27,16 +25,11 @@ func (s *Store) ReportStatusOf(ctx context.Context, p domain.Person, now time.Ti
 	if err != nil {
 		return ReportStatus{}, err
 	}
-	outcomes, err := s.ProgressOutcomes(ctx, p.ID)
-	if err != nil {
-		return ReportStatus{}, err
-	}
 	return ReportStatus{
-		Person:           p,
-		LastOneOnOne:     last,
-		Overdue:          domain.OneOnOneOverdue(last, now, intervalDays),
-		IntervalDays:     intervalDays,
-		NoProgressStreak: domain.ConsecutiveNoProgress(outcomes),
+		Person:       p,
+		LastOneOnOne: last,
+		Overdue:      domain.OneOnOneOverdue(last, now, intervalDays),
+		IntervalDays: intervalDays,
 	}, nil
 }
 

@@ -24,7 +24,6 @@
     <td>{{if .LastOneOnOne}}{{datePtr .LastOneOnOne}}{{else}}None yet{{end}}</td>
     <td>
       {{if .Overdue}}<span class="badge warn">Overdue</span>{{else}}<span class="badge ok">On time</span>{{end}}
-      {{if ge .NoProgressStreak 2}}<span class="badge bad">NO PROGRESS ×{{.NoProgressStreak}}</span>{{end}}
     </td>
   </tr>{{end}}
 </table>

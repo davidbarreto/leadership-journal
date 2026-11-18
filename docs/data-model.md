@@ -174,7 +174,7 @@ The core journal item. Always about one person; optionally tied to a meeting.
 | corrects_entry_id | INTEGER NULL → entry | |
 | created_at, finalized_at, voided_at, void_reason | | |
 
-The bi-weekly improvement journal is the 1:1's `learned`/`applied` answers. What is tracked is the 1:1 itself: a report is overdue when their last finalized, non-voided 1:1 (a meeting whose kind has `requires_person`) is older than the configured interval (15 days by default). A `progress_check` entry with its outcome is optional; `NO PROGRESS` is `outcome = 'no_progress'`, and two or more in a row are flagged.
+The bi-weekly improvement journal is the 1:1's `learned`/`applied` answers. What is tracked is the 1:1 itself: a report is overdue when their last finalized, non-voided 1:1 (a meeting whose kind has `requires_person`) is older than the configured interval (15 days by default). A `progress_check` entry with its outcome can be recorded at any time, with no required periodicity and no flag; `NO PROGRESS` is `outcome = 'no_progress'`, and the report lists the checks.
 
 ### commitment
 Covers promises, action items and learning goals.
@@ -264,7 +264,7 @@ Where the implementation differs from, or goes beyond, the design above:
   - Entries and commitments that belong to a meeting cannot be finalized on their own; they lock with the meeting. That way a draft meeting can always be deleted whole. Voiding a meeting voids what was noted in it.
   - Nothing can be added to a finalized meeting (a trigger rejects new entries, commitments and answers for it).
 - **Work items** lock only `person_id`, `release_id`, `picked_by`, `stretch`, `stretch_rationale`, `assigned_at` and the creation and finalization stamps. A partial unique index keeps a ticket reference unique among rows that are neither voided nor `moved`.
-- **Views**: only `commitment_current` is a SQL view. Release compliance, work metrics, 1:1 overdue and no-progress streaks are computed by the `domain` package from the rows (`ReleaseCompliant`, `ComputeWorkMetrics`, `OneOnOneOverdue`, `ConsecutiveNoProgress`), where they are unit-tested. A progress check is any finalized entry whose kind has `requires_outcome = 1`; no kind code is hard-coded.
+- **Views**: only `commitment_current` is a SQL view. Release compliance, work metrics and 1:1 overdue are computed by the `domain` package from the rows (`ReleaseCompliant`, `ComputeWorkMetrics`, `OneOnOneOverdue`), where they are unit-tested. A progress check is any finalized entry whose kind has `requires_outcome = 1`; no kind code is hard-coded.
 - **Documentation contributions** are finalized entries tagged `documentation`, as suggested.
 - **Search** is an FTS5 table kept in sync by triggers on `entry`, `meeting` and `meeting_answer`, so it is updated in the same transaction as any write, including draft edits and deletes. Voided records are filtered out when querying.
 - **Schema present but not yet used by the UI**: `meeting.team_id`, `meeting.metadata`, `entry.corrects_entry_id` (the store accepts it), and `person_level`-based reporting beyond the history shown on the person page.
