@@ -102,7 +102,7 @@ Minutes template per meeting kind.
 
 Seed:
 
-- `one_on_one`: `learned` (What did you learn since the last progress check?), `applied` (How did you apply it?), `blockers`, `feedback`
+- `one_on_one`: `learned` (What did you learn since our last 1:1?), `applied` (How did you apply it?), `blockers`, `feedback`
 - `team`: `agenda`, `discussion`, `decisions`
 - `standup`: `yesterday`, `today`, `blockers`
 

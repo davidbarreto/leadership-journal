@@ -92,7 +92,10 @@ func TestOpen_AppliesMigrationsAndSeeds(t *testing.T) {
 		t.Errorf("1:1 prompts learned/applied missing")
 	}
 	if got := count(t, s, `SELECT COUNT(*) FROM meeting_prompt WHERE prompt_text LIKE '%weeks%'`); got != 0 {
-		t.Errorf("prompts must not hardcode the configurable progress interval")
+		t.Errorf("prompts must not hardcode the configurable 1:1 interval")
+	}
+	if got := count(t, s, `SELECT COUNT(*) FROM meeting_prompt WHERE prompt_key = 'learned' AND prompt_text = 'What did you learn since our last 1:1?'`); got != 1 {
+		t.Errorf("the learned prompt must refer to the last 1:1, not a progress check")
 	}
 }
 
