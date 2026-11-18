@@ -530,10 +530,6 @@ func TestProgressChecks(t *testing.T) {
 	s := newTestStore(t)
 	p := mustCreatePerson(t, s, "Ana", domain.RelationshipReport)
 
-	if last, err := s.LastProgressCheck(ctx, p); err != nil || last != nil {
-		t.Fatalf("no checks yet: last = %v, err = %v", last, err)
-	}
-
 	check := func(when time.Time, outcome domain.Outcome, finalize bool) {
 		e := newEntry(p, nil, "check")
 		e.Kind, e.Outcome, e.OccurredAt = "progress_check", outcome, when
@@ -549,20 +545,59 @@ func TestProgressChecks(t *testing.T) {
 	check(day(2024, 2, 7), domain.OutcomeNoProgress, true)
 	check(day(2024, 2, 21), domain.OutcomeProgress, false) // draft: must be ignored
 
-	last, err := s.LastProgressCheck(ctx, p)
-	if err != nil || last == nil || !last.Equal(day(2024, 2, 7)) {
-		t.Errorf("LastProgressCheck = %v, %v; want 2024-02-07 (drafts ignored)", last, err)
-	}
 	outcomes, err := s.ProgressOutcomes(ctx, p)
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The draft is ignored.
 	want := []domain.Outcome{domain.OutcomeNoProgress, domain.OutcomeNoProgress, domain.OutcomeProgress}
 	if len(outcomes) != 3 || outcomes[0] != want[0] || outcomes[1] != want[1] || outcomes[2] != want[2] {
 		t.Errorf("outcomes = %v, want %v (newest first)", outcomes, want)
 	}
 	if domain.ConsecutiveNoProgress(outcomes) != 2 {
 		t.Errorf("streak = %d, want 2", domain.ConsecutiveNoProgress(outcomes))
+	}
+}
+
+func TestLastOneOnOne(t *testing.T) {
+	s := newTestStore(t)
+	ana := mustCreatePerson(t, s, "Ana", domain.RelationshipReport)
+	bia := mustCreatePerson(t, s, "Bia", domain.RelationshipReport)
+
+	if last, err := s.LastOneOnOne(ctx, ana); err != nil || last != nil {
+		t.Fatalf("no 1:1 yet: last = %v, err = %v", last, err)
+	}
+
+	meet := func(person int64, kind string, when time.Time) int64 {
+		t.Helper()
+		m := newMeeting(t, person)
+		m.Kind, m.StartsAt = kind, when
+		id, err := s.CreateMeeting(ctx, m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	finalize := func(id int64) {
+		t.Helper()
+		if err := s.FinalizeMeeting(ctx, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	finalize(meet(ana, "one_on_one", day(2024, 1, 10)))
+	finalize(meet(ana, "one_on_one", day(2024, 2, 7)))
+	meet(ana, "one_on_one", day(2024, 2, 21)) // draft
+	voided := meet(ana, "one_on_one", day(2024, 2, 28))
+	finalize(voided)
+	if err := s.VoidMeeting(ctx, voided, "wrong person"); err != nil {
+		t.Fatal(err)
+	}
+	finalize(meet(ana, "other", day(2024, 3, 1)))      // not a 1:1 kind
+	finalize(meet(bia, "one_on_one", day(2024, 3, 5))) // someone else
+
+	last, err := s.LastOneOnOne(ctx, ana)
+	if err != nil || last == nil || !last.Equal(day(2024, 2, 7)) {
+		t.Errorf("LastOneOnOne = %v, %v; want 2024-02-07 (drafts, voided, other kinds and people ignored)", last, err)
 	}
 }
 

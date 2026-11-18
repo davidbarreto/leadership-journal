@@ -149,34 +149,34 @@ func TestRelease_Validate(t *testing.T) {
 	}
 }
 
-func TestProgressOverdue(t *testing.T) {
+func TestOneOnOneOverdue(t *testing.T) {
 	now := day(2024, 6, 15)
 	tests := []struct {
 		name string
 		last *time.Time
 		want bool
 	}{
-		{name: "never checked", last: nil, want: true},
-		{name: "14 days ago is still on time", last: ptr(day(2024, 6, 1)), want: false},
-		{name: "15 days ago is overdue", last: ptr(day(2024, 5, 31)), want: true},
+		{name: "never met", last: nil, want: true},
+		{name: "15 days ago is still on time", last: ptr(day(2024, 5, 31)), want: false},
+		{name: "16 days ago is overdue", last: ptr(day(2024, 5, 30)), want: true},
 		{name: "yesterday", last: ptr(day(2024, 6, 14)), want: false},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := ProgressOverdue(tc.last, now, DefaultProgressDays); got != tc.want {
-				t.Errorf("ProgressOverdue() = %v, want %v", got, tc.want)
+			if got := OneOnOneOverdue(tc.last, now, DefaultOneOnOneDays); got != tc.want {
+				t.Errorf("OneOnOneOverdue() = %v, want %v", got, tc.want)
 			}
 		})
 	}
 }
 
-func TestProgressOverdue_CustomInterval(t *testing.T) {
+func TestOneOnOneOverdue_CustomInterval(t *testing.T) {
 	now := day(2024, 6, 15)
 	last := ptr(day(2024, 6, 1)) // 14 days ago
-	if !ProgressOverdue(last, now, 7) {
+	if !OneOnOneOverdue(last, now, 7) {
 		t.Error("14 days ago must be overdue with a 7-day interval")
 	}
-	if ProgressOverdue(last, now, 30) {
+	if OneOnOneOverdue(last, now, 30) {
 		t.Error("14 days ago must be on time with a 30-day interval")
 	}
 }

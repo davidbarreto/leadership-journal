@@ -3,6 +3,7 @@ package web
 import (
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,6 +25,18 @@ func (e *testEnv) finalizedCheck(t *testing.T, person int64, when time.Time, out
 	}
 }
 
+// finalizedOneOnOne records a finalized 1:1 with person through the store.
+func (e *testEnv) finalizedOneOnOne(t *testing.T, person int64, when time.Time) {
+	t.Helper()
+	id, err := e.st.CreateMeeting(ctx(), domain.Meeting{Kind: "one_on_one", PersonID: &person, StartsAt: when})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.st.FinalizeMeeting(ctx(), id); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestDashboard_EmptyState(t *testing.T) {
 	c := newEnv(t).loggedIn()
 	page := c.get("/")
@@ -40,6 +53,8 @@ func TestDashboard_ShowsWhatNeedsAttention(t *testing.T) {
 	c.createPerson(t, "Boss", "manager")
 
 	now := env.now // 2024-03-01
+	env.finalizedOneOnOne(t, ana, now.AddDate(0, 0, -5))
+	env.finalizedOneOnOne(t, cris, now.AddDate(0, 0, -36))
 	env.finalizedCheck(t, ana, now.AddDate(0, 0, -5), domain.OutcomeProgress, "applied it")
 	env.finalizedCheck(t, cris, now.AddDate(0, 0, -50), domain.OutcomeNoProgress, "nothing")
 	env.finalizedCheck(t, cris, now.AddDate(0, 0, -36), domain.OutcomeNoProgress, "nothing again")
@@ -69,8 +84,12 @@ func TestDashboard_ShowsWhatNeedsAttention(t *testing.T) {
 	page := c.get("/")
 	mustStatus(t, page, http.StatusOK)
 
-	// Improvement journal: Ana on time, Bia and Cris overdue, Cris on a streak.
-	mustContain(t, page, "Improvement journal", "NO PROGRESS ×2")
+	// 1:1s: Ana on time, Bia (never met) and Cris overdue, Cris on a streak.
+	mustContain(t, page, "<h2>1:1s</h2>", "due every 15 days", "NO PROGRESS ×2", "None yet")
+	if n := strings.Count(page.Body.String(), `badge warn">Overdue</span>`); n != 2 {
+		t.Errorf("overdue 1:1 badges = %d, want 2 (Bia and Cris)", n)
+	}
+	mustContain(t, page, `badge ok">On time</span>`)
 	mustContain(t, page, "Write the runbook", "Send the budget", `badge bad">Overdue</span>`)
 	// Release compliance for the release running today.
 	mustContain(t, page, "R24.1", compliantBadge, missingBadge)
@@ -250,13 +269,38 @@ func TestReport_MarkdownDownload(t *testing.T) {
 	mustNotContain(t, rec, "DRAFT ONLY")
 }
 
-func TestDashboard_ProgressIntervalIsConfigurable(t *testing.T) {
+func TestDashboard_OneOnOneIntervalIsConfigurable(t *testing.T) {
 	env := newEnv(t)
-	env.srv.progressDays = 30
+	env.srv.oneOnOneDays = 30
 	c := env.loggedIn()
 	c.createPerson(t, "Ana", "report")
 
 	page := c.get("/")
 	mustStatus(t, page, http.StatusOK)
 	mustContain(t, page, "due every 30 days")
+}
+
+func TestPeople_FlagOnlyReportsWithoutARecentOneOnOne(t *testing.T) {
+	env := newEnv(t)
+	c := env.loggedIn()
+	ana := c.createPerson(t, "Ana", "report")
+	bia := c.createPerson(t, "Bia", "report")
+	env.finalizedOneOnOne(t, ana, env.now.AddDate(0, 0, -15))
+	env.finalizedOneOnOne(t, bia, env.now.AddDate(0, 0, -16))
+
+	// Only finalized 1:1s count: a draft 1:1 with Bia today does not clear it.
+	if _, err := env.st.CreateMeeting(ctx(), domain.Meeting{Kind: "one_on_one", PersonID: &bia, StartsAt: env.now}); err != nil {
+		t.Fatal(err)
+	}
+
+	anaPage := c.get("/people/" + id(ana))
+	mustContain(t, anaPage, "Last 1:1: 15 Feb 2024")
+	mustNotContain(t, anaPage, "1:1 overdue")
+	mustContain(t, c.get("/people/"+id(bia)), "Last 1:1: 14 Feb 2024", "1:1 overdue: due every 15 days")
+
+	list := c.get("/people")
+	mustContain(t, list, "<th>Last 1:1</th>", "15 Feb 2024", "14 Feb 2024")
+	if n := strings.Count(list.Body.String(), "1:1 overdue"); n != 1 {
+		t.Errorf("overdue badges on the people list = %d, want 1 (Bia)", n)
+	}
 }

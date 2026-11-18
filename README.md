@@ -18,7 +18,7 @@ Open the address it prints (`http://127.0.0.1:8080` by default). The first time,
 | Data directory | `-data-dir` | `JOURNAL_DATA_DIR` | `~/.leadership-journal` |
 | Log level | `-log-level` | `JOURNAL_LOG_LEVEL` | `info` |
 | Time zone | `-timezone` | `JOURNAL_TIMEZONE` (then `TZ`) | detected from the system |
-| Days allowed between progress checks | `-progress-days` | `JOURNAL_PROGRESS_DAYS` | `14` |
+| Days allowed between 1:1s with each report | `-one-on-one-days` | `JOURNAL_ONE_ON_ONE_DAYS` | `15` |
 
 Flags win over environment variables, which win over defaults. Any address that is not `127.0.0.1`, `localhost` or `::1` is refused at startup. Use a different `-data-dir` for a scratch instance with fake data.
 
@@ -32,7 +32,7 @@ Stop the journal, then run `make reset-password` (set `JOURNAL_DATA_DIR` if you 
 - **Meetings** (1:1, team, standup, other): minutes with a question template per kind, notes in Markdown, action items, and notes about people made in the meeting. The meeting page is one form: the minutes, a new note and a new commitment are saved together by **Save draft** or **Save and finalize**, in one transaction. If anything is refused, the page comes back with everything you typed and nothing is saved.
 - **Notes** about a person (objectives, strengths, improvement points, feedback received and given, observations, progress checks) with tags, also between meetings.
 - **Commitments**: promises and action items in both directions, with an append-only status history. Learning goals must name a deliverable (a demo or presentation, not "I read it") and a due date.
-- **Improvement journal**: a progress check per person every 14 days by default (configurable with `-progress-days`). The dashboard flags overdue checks and `NO PROGRESS` streaks.
+- **1:1 cadence**: a 1:1 with each report every 15 days by default (configurable with `-one-on-one-days`). Only finalized 1:1s count. The dashboard, the people list and the person page flag reports whose last 1:1 is older than that. Progress-check notes are optional; when you record them, two or more `NO PROGRESS` outcomes in a row are flagged.
 - **Work**: releases and tasks per person. You record, at assignment, how much of a stretch the task is for that person (below, at or above), who picked it, and why. A release's name, dates and Markdown observations can be edited. Each release shows who has a finalized stretch task. Tasks can be reassigned, keeping the original. A person's task list shows each task's ticket and sorts by any column (click a header; newest release first by default).
 - **Metrics**: share of stretch tasks picked by the person vs assigned by you, share of tasks with an investigation first, and documentation contributions (finalized notes tagged `documentation`).
 - **Drafts**: one page lists everything not finalized yet (meetings, notes, commitments and tasks), with links to finish each one. Tick the ones that are ready and finalize them together in one transaction. The menu shows how many are waiting.
@@ -51,7 +51,7 @@ Everything you write starts as a **draft** you can edit or delete freely, and is
 | One task above their level per release | Work: stretch judgment per person and task, release standing |
 | Investigate first, documented in Confluence | Work: "investigated" flag and optional page reference |
 | Learning tasks with an observable result and a deadline | Commitments of kind *learning* (deliverable and due date required) |
-| Improvement journal every two weeks, `NO PROGRESS` when nothing was applied | Progress-check notes, 1:1 minutes template, dashboard flags |
+| Improvement journal every two weeks, `NO PROGRESS` when nothing was applied | 1:1 cadence flags and the 1:1 minutes template; optional progress-check notes for `NO PROGRESS` |
 | Metrics: % hard tasks self-taken vs assigned, documentation | Person page and report |
 | No-blame post-mortems; PIP; promotion evidence | Not built yet (see below) |
 

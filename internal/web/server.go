@@ -38,8 +38,8 @@ type Options struct {
 	Now        func() time.Time
 	Logger     *slog.Logger
 	SessionTTL time.Duration
-	// ProgressDays defaults to domain.DefaultProgressDays.
-	ProgressDays int
+	// OneOnOneDays is the 1:1 interval; it defaults to domain.DefaultOneOnOneDays.
+	OneOnOneDays int
 }
 
 // Server is the HTTP application.
@@ -49,7 +49,7 @@ type Server struct {
 	loc          *time.Location
 	now          func() time.Time
 	ttl          time.Duration
-	progressDays int
+	oneOnOneDays int
 	hosts        map[string]bool
 	limiter      *loginLimiter
 	pages        map[string]*template.Template
@@ -75,8 +75,8 @@ func New(o Options) (*Server, error) {
 	if o.SessionTTL == 0 {
 		o.SessionTTL = defaultSessionTTL
 	}
-	if o.ProgressDays == 0 {
-		o.ProgressDays = domain.DefaultProgressDays
+	if o.OneOnOneDays == 0 {
+		o.OneOnOneDays = domain.DefaultOneOnOneDays
 	}
 	hosts, err := allowedHosts(o.Addr)
 	if err != nil {
@@ -91,7 +91,7 @@ func New(o Options) (*Server, error) {
 		return nil, err
 	}
 	s := &Server{
-		store: o.Store, log: o.Logger, loc: o.Location, now: o.Now, ttl: o.SessionTTL, progressDays: o.ProgressDays,
+		store: o.Store, log: o.Logger, loc: o.Location, now: o.Now, ttl: o.SessionTTL, oneOnOneDays: o.OneOnOneDays,
 		hosts: hosts, pages: pages, reportMD: reportMD,
 		limiter: newLoginLimiter(maxLoginFailures, loginWindow, o.Now),
 	}

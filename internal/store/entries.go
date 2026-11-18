@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"sort"
 	"strings"
-	"time"
 
 	"leadership-journal/internal/domain"
 )
@@ -189,21 +188,6 @@ func (s *Store) DeleteDraftEntry(ctx context.Context, id int64) error {
 const progressChecks = `FROM entry e JOIN entry_kind k ON k.code = e.kind
 	WHERE e.person_id = ? AND k.requires_outcome = 1 AND e.finalized_at IS NOT NULL AND e.voided_at IS NULL
 	ORDER BY e.occurred_at DESC, e.id DESC`
-
-// LastProgressCheck returns when the person's latest finalized progress check
-// happened, or nil if there is none.
-func (s *Store) LastProgressCheck(ctx context.Context, personID int64) (*time.Time, error) {
-	var at, tz string
-	err := s.db.QueryRowContext(ctx, `SELECT e.occurred_at, e.occurred_tz `+progressChecks+` LIMIT 1`, personID).Scan(&at, &tz)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	t, err := parseStamp(at, tz)
-	return &t, err
-}
 
 // ProgressOutcomes returns the outcomes of the person's finalized progress
 // checks, newest first.

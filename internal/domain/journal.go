@@ -264,13 +264,13 @@ func (r Release) Validate() error {
 	return errors.Join(errs...)
 }
 
-// DefaultProgressDays is how often, in days, the improvement journal is
-// updated unless configured otherwise.
-const DefaultProgressDays = 14
+// DefaultOneOnOneDays is how many days may pass between 1:1s with a report
+// unless configured otherwise.
+const DefaultOneOnOneDays = 15
 
-// ProgressOverdue reports whether a person's last finalized progress check is
-// older than intervalDays (or does not exist).
-func ProgressOverdue(last *time.Time, now time.Time, intervalDays int) bool {
+// OneOnOneOverdue reports whether a report's last finalized 1:1 is older than
+// intervalDays (or does not exist).
+func OneOnOneOverdue(last *time.Time, now time.Time, intervalDays int) bool {
 	if last == nil {
 		return true
 	}

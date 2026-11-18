@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"strings"
+	"time"
 
 	"leadership-journal/internal/domain"
 )
@@ -236,4 +237,23 @@ func (s *Store) DeleteDraftMeeting(ctx context.Context, id int64) error {
 		}
 		return nil
 	})
+}
+
+// LastOneOnOne returns when the person's latest finalized, non-voided 1:1 took
+// place, or nil if there is none. A 1:1 is any meeting whose kind requires a
+// person, so no kind code is hard-coded.
+func (s *Store) LastOneOnOne(ctx context.Context, personID int64) (*time.Time, error) {
+	var at, tz string
+	err := s.db.QueryRowContext(ctx, `SELECT m.starts_at, m.starts_tz
+		FROM meeting m JOIN meeting_kind k ON k.code = m.kind
+		WHERE m.person_id = ? AND k.requires_person = 1 AND m.finalized_at IS NOT NULL AND m.voided_at IS NULL
+		ORDER BY m.starts_at DESC, m.id DESC LIMIT 1`, personID).Scan(&at, &tz)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	t, err := parseStamp(at, tz)
+	return &t, err
 }

@@ -200,12 +200,22 @@ func TestFinalizeDrafts_IsAllOrNothing(t *testing.T) {
 	}
 }
 
-func TestProgressStatuses(t *testing.T) {
+func TestReportStatuses(t *testing.T) {
 	s := newTestStore(t)
 	onTime := mustCreatePerson(t, s, "Ana", domain.RelationshipReport)
 	stale := mustCreatePerson(t, s, "Bia", domain.RelationshipReport)
-	mustCreatePerson(t, s, "Cris", domain.RelationshipReport) // never checked
+	mustCreatePerson(t, s, "Cris", domain.RelationshipReport) // never met
 	mustCreatePerson(t, s, "Boss", domain.RelationshipManager)
+
+	oneOnOne := func(p int64, when time.Time) {
+		m := newMeeting(t, p)
+		m.StartsAt = when
+		id, err := s.CreateMeeting(ctx, m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s.FinalizeMeeting(ctx, id)
+	}
 
 	check := func(p int64, when time.Time, o domain.Outcome) {
 		e := newEntry(p, nil, "check")
@@ -213,29 +223,31 @@ func TestProgressStatuses(t *testing.T) {
 		s.FinalizeEntry(ctx, mustEntry(t, s, e))
 	}
 	now := day(2024, 6, 15)
-	check(onTime, day(2024, 6, 10), domain.OutcomeProgress)
-	check(stale, day(2024, 4, 1), domain.OutcomeNoProgress)
-	check(stale, day(2024, 5, 1), domain.OutcomeNoProgress)
+	oneOnOne(onTime, day(2024, 6, 10))
+	oneOnOne(stale, day(2024, 5, 20))
+	// Progress checks no longer decide the cadence, only the streak.
+	check(stale, day(2024, 6, 1), domain.OutcomeNoProgress)
+	check(stale, day(2024, 6, 14), domain.OutcomeNoProgress)
 
-	got, err := s.ProgressStatuses(ctx, now, domain.DefaultProgressDays)
+	got, err := s.ReportStatuses(ctx, now, domain.DefaultOneOnOneDays)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != 3 {
 		t.Fatalf("statuses = %d, want only the 3 reports", len(got))
 	}
-	byName := map[string]PersonProgress{}
+	byName := map[string]ReportStatus{}
 	for _, pp := range got {
 		byName[pp.Person.Name] = pp
 	}
-	if a := byName["Ana"]; a.Overdue || a.NoProgressStreak != 0 || a.LastCheck == nil {
+	if a := byName["Ana"]; a.Overdue || a.NoProgressStreak != 0 || a.LastOneOnOne == nil {
 		t.Errorf("Ana = %+v, want on time", a)
 	}
 	if b := byName["Bia"]; !b.Overdue || b.NoProgressStreak != 2 {
 		t.Errorf("Bia = %+v, want overdue with a streak of 2", b)
 	}
-	if c := byName["Cris"]; !c.Overdue || c.LastCheck != nil {
-		t.Errorf("Cris = %+v, want overdue (never checked)", c)
+	if c := byName["Cris"]; !c.Overdue || c.LastOneOnOne != nil {
+		t.Errorf("Cris = %+v, want overdue (never met)", c)
 	}
 }
 

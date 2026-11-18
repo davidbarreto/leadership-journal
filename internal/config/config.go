@@ -32,9 +32,9 @@ type Config struct {
 	// Timezone is the IANA zone the owner works in. Empty means detect it
 	// from the operating system.
 	Timezone string
-	// ProgressDays is how many days may pass between progress checks before
-	// a person is flagged overdue.
-	ProgressDays int
+	// OneOnOneDays is how many days may pass between 1:1s with a report
+	// before the 1:1 is flagged overdue.
+	OneOnOneDays int
 }
 
 // Load builds the configuration from args (without the program name) and the
@@ -51,7 +51,7 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 	dir := fs.String("data-dir", firstNonEmpty(getenv("JOURNAL_DATA_DIR"), defaultDir), "directory holding the database [JOURNAL_DATA_DIR]")
 	level := fs.String("log-level", firstNonEmpty(getenv("JOURNAL_LOG_LEVEL"), "info"), "debug, info, warn or error [JOURNAL_LOG_LEVEL]")
 	tz := fs.String("timezone", firstNonEmpty(getenv("JOURNAL_TIMEZONE"), getenv("TZ")), "IANA time zone, e.g. Europe/Lisbon [JOURNAL_TIMEZONE]")
-	days := fs.Int("progress-days", defaultProgressDays(getenv), "days allowed between progress checks [JOURNAL_PROGRESS_DAYS]")
+	days := fs.Int("one-on-one-days", defaultOneOnOneDays(getenv), "days allowed between 1:1s with each report [JOURNAL_ONE_ON_ONE_DAYS]")
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
 	}
@@ -68,22 +68,22 @@ func Load(args []string, getenv func(string) string) (Config, error) {
 	}
 
 	if *days < 1 {
-		return Config{}, fmt.Errorf("invalid progress interval %d: must be at least 1 day", *days)
+		return Config{}, fmt.Errorf("invalid 1:1 interval %d: must be at least 1 day", *days)
 	}
 
-	cfg := Config{Addr: *addr, DataDir: *dir, LogLevel: lvl, Timezone: *tz, ProgressDays: *days}
+	cfg := Config{Addr: *addr, DataDir: *dir, LogLevel: lvl, Timezone: *tz, OneOnOneDays: *days}
 	if _, err := cfg.Location(); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil
 }
 
-// defaultProgressDays reads JOURNAL_PROGRESS_DAYS. An unparsable value yields
-// 0, which Load then rejects, instead of silently falling back to 14.
-func defaultProgressDays(getenv func(string) string) int {
-	v := getenv("JOURNAL_PROGRESS_DAYS")
+// defaultOneOnOneDays reads JOURNAL_ONE_ON_ONE_DAYS. An unparsable value
+// yields 0, which Load then rejects, instead of silently using the default.
+func defaultOneOnOneDays(getenv func(string) string) int {
+	v := getenv("JOURNAL_ONE_ON_ONE_DAYS")
 	if v == "" {
-		return domain.DefaultProgressDays
+		return domain.DefaultOneOnOneDays
 	}
 	n, err := strconv.Atoi(v)
 	if err != nil {

@@ -10,40 +10,49 @@ import (
 	"leadership-journal/internal/domain"
 )
 
-// PersonProgress is the improvement-journal status of one report.
-type PersonProgress struct {
-	Person           domain.Person
-	LastCheck        *time.Time
+// ReportStatus is what needs watching about one report: the 1:1 cadence and
+// any run of progress checks without progress.
+type ReportStatus struct {
+	Person       domain.Person
+	LastOneOnOne *time.Time
+	// Overdue means the last 1:1 is more than IntervalDays ago, or there is none.
 	Overdue          bool
 	IntervalDays     int
 	NoProgressStreak int
 }
 
-// ProgressStatuses reports, for every report, when their last progress check
-// was, whether the next one is overdue (more than intervalDays ago), and how
-// many no-progress results in a row they have.
-func (s *Store) ProgressStatuses(ctx context.Context, now time.Time, intervalDays int) ([]PersonProgress, error) {
+// ReportStatusOf computes the status of one report as of now.
+func (s *Store) ReportStatusOf(ctx context.Context, p domain.Person, now time.Time, intervalDays int) (ReportStatus, error) {
+	last, err := s.LastOneOnOne(ctx, p.ID)
+	if err != nil {
+		return ReportStatus{}, err
+	}
+	outcomes, err := s.ProgressOutcomes(ctx, p.ID)
+	if err != nil {
+		return ReportStatus{}, err
+	}
+	return ReportStatus{
+		Person:           p,
+		LastOneOnOne:     last,
+		Overdue:          domain.OneOnOneOverdue(last, now, intervalDays),
+		IntervalDays:     intervalDays,
+		NoProgressStreak: domain.ConsecutiveNoProgress(outcomes),
+	}, nil
+}
+
+// ReportStatuses returns the status of every report, in ListPeople order.
+func (s *Store) ReportStatuses(ctx context.Context, now time.Time, intervalDays int) ([]ReportStatus, error) {
 	people, err := s.ListPeople(ctx, domain.RelationshipReport)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]PersonProgress, 0, len(people))
+	out := make([]ReportStatus, 0, len(people))
 	for _, p := range people {
-		last, err := s.LastProgressCheck(ctx, p.ID)
+		st, err := s.ReportStatusOf(ctx, p, now, intervalDays)
 		if err != nil {
 			return nil, err
 		}
-		outcomes, err := s.ProgressOutcomes(ctx, p.ID)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, PersonProgress{
-			Person:           p,
-			LastCheck:        last,
-			Overdue:          domain.ProgressOverdue(last, now, intervalDays),
-			IntervalDays:     intervalDays,
-			NoProgressStreak: domain.ConsecutiveNoProgress(outcomes),
-		})
+		out = append(out, st)
 	}
 	return out, nil
 }

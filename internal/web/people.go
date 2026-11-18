@@ -28,7 +28,7 @@ type personRow struct {
 	Person   domain.Person
 	TeamName string
 	Level    string
-	Progress *store.PersonProgress
+	Status   *store.ReportStatus
 	Start    *quickMeeting
 }
 
@@ -51,13 +51,13 @@ func (s *Server) peopleList(w http.ResponseWriter, r *http.Request) error {
 	for _, t := range teams {
 		teamNames[t.ID] = t.Name
 	}
-	progress, err := s.store.ProgressStatuses(ctx, s.now(), s.progressDays)
+	statuses, err := s.store.ReportStatuses(ctx, s.now(), s.oneOnOneDays)
 	if err != nil {
 		return err
 	}
-	progressByID := map[int64]*store.PersonProgress{}
-	for i := range progress {
-		progressByID[progress[i].Person.ID] = &progress[i]
+	statusByID := map[int64]*store.ReportStatus{}
+	for i := range statuses {
+		statusByID[statuses[i].Person.ID] = &statuses[i]
 	}
 
 	kind, hasKind, err := s.quickMeetingKind(ctx)
@@ -70,7 +70,7 @@ func (s *Server) peopleList(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
-		row := personRow{Person: p, Level: level, Progress: progressByID[p.ID], Start: quickMeetingFor(p, kind, hasKind, csrfOf(r))}
+		row := personRow{Person: p, Level: level, Status: statusByID[p.ID], Start: quickMeetingFor(p, kind, hasKind, csrfOf(r))}
 		if p.TeamID != nil {
 			row.TeamName = teamNames[*p.TeamID]
 		}
@@ -261,7 +261,7 @@ type personPage struct {
 	Person   domain.Person
 	TeamName string
 	Level    string
-	Progress *store.PersonProgress
+	Status   *store.ReportStatus
 	Start    *quickMeeting
 	Tabs     []personTab
 	Tab      string
@@ -328,7 +328,7 @@ func (s *Server) personShow(w http.ResponseWriter, r *http.Request) error {
 }
 
 // loadPersonHeader fills what every tab shows: team, current level and, for
-// reports, the improvement journal status.
+// reports, the 1:1 cadence.
 func (s *Server) loadPersonHeader(ctx context.Context, page *personPage) error {
 	p := page.Person
 	if p.TeamID != nil {
@@ -349,18 +349,11 @@ func (s *Server) loadPersonHeader(ctx context.Context, page *personPage) error {
 	page.Level = level
 
 	if p.Relationship == domain.RelationshipReport {
-		last, err := s.store.LastProgressCheck(ctx, p.ID)
+		st, err := s.store.ReportStatusOf(ctx, p, s.now(), s.oneOnOneDays)
 		if err != nil {
 			return err
 		}
-		outcomes, err := s.store.ProgressOutcomes(ctx, p.ID)
-		if err != nil {
-			return err
-		}
-		page.Progress = &store.PersonProgress{
-			Person: p, LastCheck: last, Overdue: domain.ProgressOverdue(last, s.now(), s.progressDays), IntervalDays: s.progressDays,
-			NoProgressStreak: domain.ConsecutiveNoProgress(outcomes),
-		}
+		page.Status = &st
 	}
 	kind, ok, err := s.quickMeetingKind(ctx)
 	if err != nil {

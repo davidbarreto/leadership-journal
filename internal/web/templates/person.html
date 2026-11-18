@@ -4,10 +4,10 @@
 <p class="muted">
   {{.Person.RoleTitle}}{{if .TeamName}} · {{.TeamName}}{{end}} · {{human (print .Person.Relationship)}}{{if .Level}} · Level {{.Level}}{{end}}
 </p>
-{{with .Progress}}
+{{with .Status}}
 <p>
-  {{if .LastCheck}}Last progress check: {{datePtr .LastCheck}}{{else}}No progress check yet.{{end}}
-  {{if .Overdue}}<span class="badge warn">Overdue: due every {{.IntervalDays}} days</span>{{end}}
+  {{if .LastOneOnOne}}Last 1:1: {{datePtr .LastOneOnOne}}{{else}}No 1:1 yet.{{end}}
+  {{if .Overdue}}<span class="badge warn">1:1 overdue: due every {{.IntervalDays}} days</span>{{end}}
   {{if ge .NoProgressStreak 2}}<span class="badge bad">NO PROGRESS ×{{.NoProgressStreak}} in a row</span>{{end}}
 </p>
 {{end}}

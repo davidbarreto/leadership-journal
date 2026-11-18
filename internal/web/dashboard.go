@@ -11,15 +11,15 @@ type dashboardPage struct {
 	NoPeople     bool
 	Drafts       store.DraftCounts
 	AnyDrafts    bool
-	Progress     []store.PersonProgress
-	ProgressDays int
+	Reports      []store.ReportStatus
+	OneOnOneDays int
 	Commitments  []commitmentView
 	Release      *domain.Release
 	Compliance   []store.ComplianceRow
 }
 
 // dashboard answers "what needs my attention?": drafts waiting to be locked,
-// reports whose improvement journal is overdue or stuck, open commitments, and
+// reports whose 1:1 is overdue or who show no progress, open commitments, and
 // who has a stretch task in the running release.
 func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
@@ -27,14 +27,14 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	page := dashboardPage{NoPeople: len(people) == 0, ProgressDays: s.progressDays}
+	page := dashboardPage{NoPeople: len(people) == 0, OneOnOneDays: s.oneOnOneDays}
 
 	if page.Drafts, err = s.store.PendingDrafts(ctx); err != nil {
 		return err
 	}
 	page.AnyDrafts = page.Drafts.Total() > 0
 
-	if page.Progress, err = s.store.ProgressStatuses(ctx, s.now(), s.progressDays); err != nil {
+	if page.Reports, err = s.store.ReportStatuses(ctx, s.now(), s.oneOnOneDays); err != nil {
 		return err
 	}
 
